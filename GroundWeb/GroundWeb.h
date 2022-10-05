@@ -2,10 +2,12 @@
 
 #include <QtWidgets/QWidget>
 #include "ui_GroundWeb.h"
+#include "CommandInputHandler.h"
 
 class GroundWeb : public QWidget
 {
     Q_OBJECT
+
 public slots:
     void on_userInputField_returnPressed();
 
