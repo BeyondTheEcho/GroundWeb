@@ -15,6 +15,8 @@ GroundWeb::GroundWeb(QWidget *parent) : QWidget(parent)
 
     cmd = new CommandInputHandler();
     cmd->StoreUIInst(ui);
+
+    ui.consoleOutput->setText("Type Help For A List Of Commands");
 }
 
 GroundWeb::~GroundWeb()

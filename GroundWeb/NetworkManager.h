@@ -3,6 +3,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <string>
+#include <thread>
 #include <windows.h>
 #include <WinSock2.h>
 
@@ -16,10 +17,16 @@ public:
 	//Instances
 	CommandInputHandler* cmd;
 
+	//Threads
+	thread listenThread;
+
 	//Vars
 	int userPort;
 	string connectIP;
 	string userName;
+	bool isThreadRunning = true;
+	char* recString = new char[65543];
+
 
 	static NetworkManager* GetInstance()
 	{
@@ -38,11 +45,11 @@ public:
 	void SetRemoteData(int port, string cxIP);
 	void SendData(const char* data);
 	int ReceiveData(char* ReceiveBuffer);
+	void ListenForMessage();
+	void ShutdownApplication();
+	void StartMultithreading();
 
 private:
-	//Construct / Destruct
-	NetworkManager();
-	~NetworkManager();
 
 	//Sockets
 	SOCKET UDPSocketIn;

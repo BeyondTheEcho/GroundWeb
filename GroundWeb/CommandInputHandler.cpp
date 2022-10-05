@@ -9,6 +9,9 @@ using namespace std;
 
 void CommandInputHandler::HandleCommand(string s)
 {
+	//Take string and converts to lower to manage input
+	string formatedString = StringToLower(s);
+
 	//Regex Patterns
 	regex portPattern("-p \"(\\d+)\"");
 	regex ipPattern("-ip \"((\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3}))\"");
@@ -25,45 +28,55 @@ void CommandInputHandler::HandleCommand(string s)
 		}
 		else
 		{
-			tempPort = std::stoi(regexOutput[1]);
-			PrintToCMD("Port Number Set To: " + std::to_string(tempPort));
+			connectionPort = std::stoi(regexOutput[1]);
+			PrintToCMD("Port Number Set To: " + std::to_string(connectionPort));
+			portSelected = true;
 		}
 	}
-
-	if (regex_search(s, regexOutput, ipPattern))
+	else if (regex_search(s, regexOutput, ipPattern))
 	{
 		if (validate_ip_segment(regexOutput[2]) &&
 			validate_ip_segment(regexOutput[3]) &&
 			validate_ip_segment(regexOutput[4]) &&
-			validate_ip_segment(regexOutput[5])
-			)
+			validate_ip_segment(regexOutput[5]))
 		{
 			ipString = regexOutput[1];
 			PrintToCMD("Ip Set To: " + ipString);
+			ipSelected = true;
 		}
 		else
 		{
 			PrintToCMD("Invalid IP Address Entered");
 		}
 	}
-
-
-	//Take string and converts to lower to manage input
-	string formatedString = StringToLower(s);
-
-	if (s == "help")
+	else if (s == "help")
 	{
-		PrintToCMD("'CLR' Clears Console");
-		PrintToCMD("This will be a help string");
+		PrintHelp();
 	}
-	if (s == "clr")
+	else if (s == "clr")
 	{
-		cmdString.clear();
-		ui.consoleOutput->setText(cmdString);
+		ClearConsole();
 	}
-	if (s == "init")
+	else if (s == "config")
+	{
+		CheckNetworkConfig();
+	}
+	else if (s == "init")
 	{
 		InitNetwork();
+	}
+	else if (s == "quit")
+	{
+		network->ShutdownApplication();
+	}
+	else if (networkInitialized == true)
+	{
+		PrintToCMD(s);
+		network->SendData(s.c_str());
+	}
+	else
+	{
+		PrintToCMD(s);
 	}
 
 }
@@ -90,8 +103,25 @@ void CommandInputHandler::PrintToCMD(string s)
 
 void CommandInputHandler::InitNetwork()
 {
-	network = NetworkManager::GetInstance();
-	network->Init(this);
+	if (portSelected == true && ipSelected == true)
+	{
+		network = NetworkManager::GetInstance();
+		network->Init(this);
+		network->CreateUDPSockets();
+		network->BindUDP();
+		network->SetRemoteData(connectionPort, ipString);
+		network->StartMultithreading();
+
+		networkInitialized = true;
+
+		PrintToCMD("Network Connection Initialized");
+	}
+	else
+	{
+		PrintToCMD("ERROR: Either your port or ip are not set");
+		PrintToCMD("Type -p \"X.X.X.X\" where x represents the port you wish to use");
+		PrintToCMD("Type -ip and enter your up in quotations. Example -ip \"192.168.2.1\"");
+	}
 }
 
 bool CommandInputHandler::validate_ip_segment(const std::string& str)
@@ -107,4 +137,25 @@ bool CommandInputHandler::validate_ip_segment(const std::string& str)
 	{
 		return false;
 	}
+}
+
+void CommandInputHandler::PrintHelp()
+{
+	PrintToCMD("Help - Enabled this menu");
+	PrintToCMD("CLR - Clear Console History");
+	PrintToCMD("Config - Prints Network Status");
+	PrintToCMD("Init - Initializes Network Connection Once All Required Field Are Entered");
+}
+
+void CommandInputHandler::ClearConsole()
+{
+	cmdString.clear();
+	ui.consoleOutput->setText(cmdString);
+}
+
+void CommandInputHandler::CheckNetworkConfig()
+{
+	PrintToCMD("Port Selected: " + portSelected);
+	PrintToCMD("IP Entered: " + ipSelected);
+	PrintToCMD("Network Initialized: " + networkInitialized);
 }

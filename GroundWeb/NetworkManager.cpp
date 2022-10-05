@@ -1,21 +1,12 @@
 #include "NetworkManager.h"
 #include "iostream"
 #include  <WS2tcpip.h>
+#include <thread>
 #include "CommandInputHandler.h"
 
 using namespace std;
 
 NetworkManager* NetworkManager::instance = nullptr;
-
-NetworkManager::NetworkManager()
-{
-	
-}
-
-NetworkManager::~NetworkManager()
-{
-
-}
 
 void NetworkManager::Init(CommandInputHandler* cmdInst)
 {
@@ -32,36 +23,6 @@ void NetworkManager::Init(CommandInputHandler* cmdInst)
 	}
 }
 
-void NetworkManager::Shutdown()
-{
-	cout << "NetworkManager::Shutdown() called." << endl;
-
-	int errorCode = WSAGetLastError();
-	if (errorCode != 0)
-	{
-		cout << "Forced shutdown due to WSAError#: " << errorCode << endl;
-	}
-
-	if (UDPSocketIn != INVALID_SOCKET)
-	{
-		if (closesocket(UDPSocketIn) != 0)
-		{
-			cout << "[ERROR] error closing UDP In Socket." << endl;
-		}
-	}
-
-	if (UDPSocketOut != INVALID_SOCKET)
-	{
-		if (closesocket(UDPSocketIn) != 0)
-		{
-			cout << "[ERROR] error closing UDP Out Socket." << endl;
-		}
-	}
-
-	WSACleanup();
-	exit(0);
-}
-
 void NetworkManager::CreateUDPSockets()
 {
 	u_long isBlocking = 1;
@@ -69,10 +30,10 @@ void NetworkManager::CreateUDPSockets()
 	UDPSocketIn = socket(AF_INET, SOCK_DGRAM, 0);
 
 	ioctlsocket(UDPSocketIn, FIONBIO, &isBlocking);
-	
+
 	if (UDPSocketIn == INVALID_SOCKET)
 	{
-		cout << "Failed to create inbound socket" << endl;
+		cmd->PrintToCMD("Failed to create inbound socket");
 		Shutdown();
 	}
 
@@ -80,9 +41,55 @@ void NetworkManager::CreateUDPSockets()
 
 	if (UDPSocketOut == INVALID_SOCKET)
 	{
-		cout << "Failed to create outbound socket" << endl;
+		cmd->PrintToCMD("Failed to create outbound socket");
 		Shutdown();
 	}
+}
+
+void NetworkManager::SetRemoteData(int port, string cxIP)
+{
+	outAddr.sin_family = AF_INET;
+
+	outAddr.sin_port = htons(port);
+
+	inet_pton(AF_INET, cxIP.c_str(), &outAddr.sin_addr);
+}
+
+void NetworkManager::StartMultithreading()
+{
+	listenThread = thread([this]
+	{
+		ListenForMessage();
+	});
+}
+
+void NetworkManager::ListenForMessage()
+{
+	while (isThreadRunning)
+	{
+		int rcvSize = ReceiveData(recString);
+
+		if (rcvSize > 0)
+		{
+			cmd->PrintToCMD(recString);
+		}
+	}
+}
+
+int NetworkManager::ReceiveData(char* ReceiveBuffer)
+{
+	int BytesReceived = 0;
+	int inAddrSize = sizeof(inAddr);
+
+	BytesReceived = recvfrom(UDPSocketIn, ReceiveBuffer, 65535, 0,
+		reinterpret_cast<SOCKADDR*>(&inAddr), &inAddrSize);
+
+	if (BytesReceived == WSAEWOULDBLOCK)
+	{
+		Shutdown();
+	}
+
+	return BytesReceived;
 }
 
 void NetworkManager::BindUDP()
@@ -100,19 +107,10 @@ void NetworkManager::BindUDP()
 
 	if (bindError == SOCKET_ERROR)
 	{
-		cout << "[ERROR] binding failed." << endl;
+		cmd->PrintToCMD("[ERROR] binding failed.");
 
 		Shutdown();
 	}
-}
-
-void NetworkManager::SetRemoteData(int port, string cxIP)
-{
-	outAddr.sin_family = AF_INET;
-
-	outAddr.sin_port = htons(port);
-
-	inet_pton(AF_INET, cxIP.c_str(), &outAddr.sin_addr);
 }
 
 void NetworkManager::SendData(const char* data)
@@ -125,23 +123,45 @@ void NetworkManager::SendData(const char* data)
 		Shutdown();
 	}
 
-	cout << " sent : " << totalBytes << " of data" << endl;
+	cmd->PrintToCMD("sent : " + to_string(totalBytes) + " of data");
 }
 
-int NetworkManager::ReceiveData(char* ReceiveBuffer)
+void NetworkManager::Shutdown()
 {
-	int BytesReceived = 0;
-	int inAddrSize = sizeof(inAddr);
+	cmd->PrintToCMD("NetworkManager::Shutdown() called.");
 
-	BytesReceived = recvfrom(UDPSocketIn, ReceiveBuffer, 65535, 0,
-		reinterpret_cast<SOCKADDR*>(&inAddr), &inAddrSize);
-
-	if (BytesReceived == WSAEWOULDBLOCK)
+	int errorCode = WSAGetLastError();
+	if (errorCode != 0)
 	{
-		Shutdown();
+		cmd->PrintToCMD("Forced shutdown due to WSAError#: " + to_string(errorCode));
 	}
 
-	return BytesReceived;
+	if (UDPSocketIn != INVALID_SOCKET)
+	{
+		if (closesocket(UDPSocketIn) != 0)
+		{
+			cmd->PrintToCMD("[ERROR] error closing UDP In Socket.");
+		}
+	}
+
+	if (UDPSocketOut != INVALID_SOCKET)
+	{
+		if (closesocket(UDPSocketIn) != 0)
+		{
+			cmd->PrintToCMD("[ERROR] error closing UDP Out Socket.");
+		}
+	}
+
+	WSACleanup();
+	exit(0);
+}
+
+
+void NetworkManager::ShutdownApplication()
+{
+	isThreadRunning = false;
+	listenThread.join();
+	Shutdown();
 }
 
 

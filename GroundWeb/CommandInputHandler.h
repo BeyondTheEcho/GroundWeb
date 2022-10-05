@@ -12,9 +12,14 @@ public:
 	//Vars
 	QString cmdString;
 
-	//temp
-	int tempPort;
+	//Connection Vars
+	int connectionPort;
 	string ipString;
+
+	//Connection Flags
+	bool portSelected = false;
+	bool ipSelected = false;
+	bool networkInitialized = false;
 
 	//Instance References
 	Ui::GroundWebClass ui;
@@ -29,6 +34,9 @@ public:
 	//Utility
 	void StoreUIInst(Ui::GroundWebClass uiInst);
 	void PrintToCMD(string s);
+	void PrintHelp();
+	void ClearConsole();
+	void CheckNetworkConfig();
 	string StringToLower(std::string str);
 	bool validate_ip_segment(const std::string& str);
 };
