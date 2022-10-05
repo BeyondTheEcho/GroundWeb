@@ -5,15 +5,16 @@
 #include <string>
 #include <windows.h>
 #include <WinSock2.h>
-#include "CommandInputHandler.h"
 
 using namespace std;
+
+class CommandInputHandler;
 
 class NetworkManager
 {
 public:
 	//Instances
-	//CommandInputHandler* cmd;
+	CommandInputHandler* cmd;
 
 	//Vars
 	int userPort;
@@ -30,7 +31,7 @@ public:
 		return instance;
 	}
 
-	void Init(/*CommandInputHandler* cmdInst*/);
+	void Init(CommandInputHandler* cmdInst);
 	void Shutdown();
 	void CreateUDPSockets();
 	void BindUDP();
