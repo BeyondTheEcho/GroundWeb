@@ -5,19 +5,20 @@ GroundWeb::GroundWeb(QWidget *parent) : QWidget(parent)
 	//Execute code on setup here
     ui.setupUi(this);
 
-    RegisterCommand("help", [this](std::string content)
+    string helpDesc = "Displays a list of all registered commands";
+    RegisterCommand("help", helpDesc, [this](std::string content)
         {
             string printStr = "==== Commands List ====\n";        
 
             for (auto command : commands)
             {
-                printStr.append(command.name + "\n");
+                printStr.append("/" + command.m_Name + " - " + command.m_Description + "\n");
             }
 
             PrintToCMD(printStr);
         });
 
-    ui.consoleOutput->setText("Type Help For A List Of Commands");
+    ui.consoleOutput->setText("Type help for a list of commands");
 }
 
 GroundWeb::~GroundWeb()
@@ -46,9 +47,9 @@ void GroundWeb::PrintToCMD(string s)
 	ui.consoleOutput->setText(cmdString);
 }
 
-void GroundWeb::RegisterCommand(string name, Command::CommandHandler handler)
+void GroundWeb::RegisterCommand(string name, string description, Command::CommandHandler handler)
 {
-    commands.emplace_back(name, handler);
+    commands.emplace_back(name, description, handler);
 }
 
 void GroundWeb::HandleCommands(string cmdString)
@@ -62,10 +63,10 @@ void GroundWeb::HandleCommands(string cmdString)
 
     for (auto command : commands)
     {
-        if (StringStartsWith(cmdString, command.name))
+        if (StringStartsWith(cmdString, command.m_Name))
         {
-            string content = cmdString.substr(command.name.length());       
-            command.handler(content);
+            string content = cmdString.substr(command.m_Name.length());       
+            command.m_Handler(content);
         }
     }
 }

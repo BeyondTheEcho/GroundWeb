@@ -15,12 +15,14 @@ class Command
 {
 public:
     typedef std::function<void(std::string)> CommandHandler;
-    string name;
-    CommandHandler handler;
+    string m_Name;
+    string m_Description;
+    CommandHandler m_Handler;
 
-    Command(string cmdName, CommandHandler cmdHandler)
-        : name(cmdName)
-        , handler(cmdHandler)
+    Command(string name, string desciption, CommandHandler handler)
+        : m_Name(name)
+        , m_Description(desciption)
+        , m_Handler(handler)
     {
 
     }
@@ -37,7 +39,7 @@ public:
     GroundWeb(QWidget *parent = nullptr);
     ~GroundWeb();
 	void PrintToCMD(string s);
-    void RegisterCommand(string name, Command::CommandHandler handler);
+    void RegisterCommand(string name, string description, Command::CommandHandler handler);
 
 private:
     //Vars
