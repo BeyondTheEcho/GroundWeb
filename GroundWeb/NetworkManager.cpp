@@ -156,7 +156,6 @@ void NetworkManager::Shutdown()
 	exit(0);
 }
 
-
 void NetworkManager::ShutdownApplication()
 {
 	isThreadRunning = false;
