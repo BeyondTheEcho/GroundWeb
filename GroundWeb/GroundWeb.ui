@@ -13,25 +13,6 @@
   <property name="windowTitle">
    <string>GroundWeb</string>
   </property>
-  <widget class="QTextEdit" name="consoleOutput">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>581</width>
-     <height>341</height>
-    </rect>
-   </property>
-   <property name="autoFillBackground">
-    <bool>false</bool>
-   </property>
-   <property name="sizeAdjustPolicy">
-    <enum>QAbstractScrollArea::AdjustIgnored</enum>
-   </property>
-   <property name="readOnly">
-    <bool>true</bool>
-   </property>
-  </widget>
   <widget class="QLineEdit" name="userInputField">
    <property name="geometry">
     <rect>
@@ -42,6 +23,38 @@
     </rect>
    </property>
   </widget>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>581</width>
+     <height>341</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TextLabel</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
+   </property>
+   <property name="margin">
+    <number>10</number>
+   </property>
+  </widget>
+  <widget class="QTextEdit" name="textEdit">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>581</width>
+     <height>341</height>
+    </rect>
+   </property>
+  </widget>
+  <zorder>userInputField</zorder>
+  <zorder>textEdit</zorder>
+  <zorder>label</zorder>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources>

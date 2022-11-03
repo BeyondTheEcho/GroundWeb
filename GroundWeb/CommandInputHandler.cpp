@@ -98,7 +98,7 @@ void CommandInputHandler::PrintToCMD(string s)
 	s.append("\n");
 	cmdString.append(QString::fromStdString(s));
 
-	ui.consoleOutput->setText(cmdString);
+	ui.label->setText(cmdString);
 }
 
 void CommandInputHandler::InitNetwork()
@@ -150,7 +150,7 @@ void CommandInputHandler::PrintHelp()
 void CommandInputHandler::ClearConsole()
 {
 	cmdString.clear();
-	ui.consoleOutput->setText(cmdString);
+	ui.label->setText(cmdString);
 }
 
 void CommandInputHandler::CheckNetworkConfig()

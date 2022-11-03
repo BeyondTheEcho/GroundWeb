@@ -3,22 +3,12 @@
 GroundWeb::GroundWeb(QWidget *parent) : QWidget(parent)
 {
 	//Execute code on setup here
-    ui.setupUi(this);
+    m_UI.setupUi(this);
 
-    string helpDesc = "Displays a list of all registered commands";
-    RegisterCommand("help", helpDesc, [this](std::string content)
-        {
-            string printStr = "==== Commands List ====\n";        
+    RegisterBuiltInCommands();
 
-            for (auto command : commands)
-            {
-                printStr.append("/" + command.m_Name + " - " + command.m_Description + "\n");
-            }
-
-            PrintToCMD(printStr);
-        });
-
-    ui.consoleOutput->setText("Type help for a list of commands");
+    ClearCommandLine();
+    PrintToCMD("Type help for a list of commands");
 }
 
 GroundWeb::~GroundWeb()
@@ -27,29 +17,32 @@ GroundWeb::~GroundWeb()
 void GroundWeb::on_userInputField_returnPressed()
 {
     //Take in the text from inputfield as Qstring and casts to std::string
-    commandInputString = ui.userInputField->text().toUtf8().constData();
+    m_CommandInputString = m_UI.userInputField->text().toUtf8().constData();
+
+    //Prints user entered text to the cmd
+    PrintToCMD(m_CommandInputString);
 
     //Passes converted string to command handler
-    HandleCommands(commandInputString);
+    HandleCommands(m_CommandInputString);
 
     //Cleanup cmdstring and input field
-    commandInputString.clear();
-    ui.userInputField->clear();
+    m_CommandInputString.clear();
+    m_UI.userInputField->clear();
 }
 
 void GroundWeb::PrintToCMD(string s)
 {
-	QString cmdString;
+	QString cmdString = m_UI.label->text();
 
-	s.append("\n");
+	cmdString.append("\n");
 	cmdString.append(QString::fromStdString(s));
 
-	ui.consoleOutput->setText(cmdString);
+	m_UI.label->setText(cmdString);
 }
 
 void GroundWeb::RegisterCommand(string name, string description, Command::CommandHandler handler)
 {
-    commands.emplace_back(name, description, handler);
+    m_Commands.emplace_back(name, description, handler);
 }
 
 void GroundWeb::HandleCommands(string cmdString)
@@ -61,7 +54,7 @@ void GroundWeb::HandleCommands(string cmdString)
     
     cmdString = cmdString.substr(1);
 
-    for (auto command : commands)
+    for (auto command : m_Commands)
     {
         if (StringStartsWith(cmdString, command.m_Name))
         {
@@ -71,7 +64,7 @@ void GroundWeb::HandleCommands(string cmdString)
     }
 }
 
-//Utility Functions
+// Utility Functions
 
 string GroundWeb::StringToLower(string str)
 {
@@ -86,4 +79,40 @@ bool GroundWeb::StringStartsWith(string str, string substr)
     string start = str.substr(0, length);
 
     return start == substr;
+}
+
+// Command Line Functions
+
+void GroundWeb::ClearCommandLine()
+{
+    m_UI.label->clear();
+}
+
+void GroundWeb::HelpCommandLine()
+{
+    string printStr = "==== Commands List ====\n";
+
+    for (auto command : m_Commands)
+    {
+        printStr.append("/" + command.m_Name + " - " + command.m_Description + "\n");
+    }
+
+    PrintToCMD(printStr);
+}
+
+// Registered Commands
+
+void GroundWeb::RegisterBuiltInCommands()
+{
+    string helpDesc = "Displays a list of all registered commands";
+    RegisterCommand("help", helpDesc, [this](std::string _)
+        {
+            HelpCommandLine();
+        });
+
+    string clearDesc = "Clears all command line history";
+    RegisterCommand("clear", clearDesc, [this](std::string _)
+        {
+            ClearCommandLine();
+        });
 }

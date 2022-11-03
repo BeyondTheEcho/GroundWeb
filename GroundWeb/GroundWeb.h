@@ -43,16 +43,21 @@ public:
 
 private:
     //Vars
-    string commandInputString;
-    vector<Command> commands;
+    string m_CommandInputString;
+    vector<Command> m_Commands;
 
     //Functions
     void HandleCommands(string cmdString);
+    void RegisterBuiltInCommands();
+
+    //Command Line Functions
+    void ClearCommandLine();
+    void HelpCommandLine();
 
     //Utility Funcs
     string StringToLower(string str);
     bool StringStartsWith(string str, string substr);
 
-    Ui::GroundWebClass ui;
+    Ui::GroundWebClass m_UI;
 };
 
