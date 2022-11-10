@@ -57,6 +57,7 @@ public:
 	void PrintNetworkSettings();
 	void SetIP(string ip);
 	void SetPort(string port);
+	void SendMessageTCP(string message);
 
 	//Call on Shutdown
 	void Shutdown();
@@ -82,6 +83,7 @@ private:
 	int numConnections = 0;
 	bool m_IsServer = false;
 	bool m_IsIPSet = false;
+	bool m_IsConnected = false;
 	bool m_PortOverride = false;
 	string m_IP;
 	string m_Port = "8889";

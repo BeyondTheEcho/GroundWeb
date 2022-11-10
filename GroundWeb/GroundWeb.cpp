@@ -58,8 +58,12 @@ void GroundWeb::HandleCommands(string cmdString)
     {
         if (StringStartsWith(cmdString, command.m_Name))
         {
-            string content = cmdString.substr(command.m_Name.length() + 1);       
-            command.m_Handler(content);
+            string content = cmdString.substr(command.m_Name.length());
+
+            string modifiedContent = content;
+            modifiedContent.erase(0, 1);
+
+            command.m_Handler(modifiedContent);
         }
     }
 }

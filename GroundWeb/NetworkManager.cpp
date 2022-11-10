@@ -133,18 +133,24 @@ void NetworkManager::ConnectTCP()
 {
 	//Client connection to the listening socket
 	TCPoutAddr.sin_family = AF_INET;
-	TCPoutAddr.sin_port = htons(8889);
-	inet_pton(AF_INET, "127.0.0.1", &TCPoutAddr.sin_addr);
+	TCPoutAddr.sin_port = htons(stoi(m_Port));
+	//Change Ip to 127.0.0.1 To Connect To Self
+	inet_pton(AF_INET, m_IP.c_str(), &TCPoutAddr.sin_addr);
 
 	int connectStatus = connect(TCPSocketOut, reinterpret_cast<sockaddr*>(&TCPoutAddr), sizeof(TCPoutAddr));
 
 	if (connectStatus == SOCKET_ERROR)
 	{
 		m_GroundWeb->PrintToCMD("ERROR: Error connecting through TCP socket info supplied");
+		m_IsConnected = false;
 		Shutdown();
 	}
 
-	numConnections++;
+	if (connectStatus != SOCKET_ERROR)
+	{
+		m_IsConnected = true;
+		m_GroundWeb->PrintToCMD("Successfully connected to " + m_IP);
+	}
 
 	//Makes socket Async
 	unsigned long bit = 1;
@@ -204,9 +210,9 @@ void NetworkManager::SetRemoteData()
 {
 	UDPoutAddr.sin_family = AF_INET;
 
-	UDPoutAddr.sin_port = htons(8889);
+	UDPoutAddr.sin_port = htons(stoi(m_Port));
 
-	inet_pton(AF_INET, "127.0.0.1", &UDPoutAddr.sin_addr);
+	inet_pton(AF_INET, m_IP.c_str(), &UDPoutAddr.sin_addr);
 }
 
 void NetworkManager::SendDataUDP(const char* data)
@@ -311,6 +317,9 @@ void NetworkManager::Shutdown()
 		}
 	}
 
+	m_ListenThread.join();
+	m_ReceiveThread.join();
+
 	WSACleanup();
 	exit(0);
 }
@@ -355,25 +364,33 @@ void NetworkManager::RegisterNetworkCommands()
 			PrintNetworkSettings();
 		});
 
+	string messageDesc = "Sends message content to connected IP";
+	m_GroundWeb->RegisterCommand("msg", messageDesc, [this](std::string messageContent)
+		{
+			SendMessageTCP(messageContent);
+		});
+
 	m_GroundWeb->PrintToCMD("Network commands registered");
 }
 
 //Network Commands
 void NetworkManager::StartNetworking()
 {
-	if (m_IsIPSet == false)
-	{
-		m_GroundWeb->PrintToCMD("ERROR: IP Address not set");
-		return;
-	}
-
 	if (m_IsServer == true)
 	{
 		StartServer();
 	}
 	else if (m_IsServer == false)
 	{
-		StartClient();
+		if (m_IsIPSet == false)
+		{
+			m_GroundWeb->PrintToCMD("ERROR: IP Address not set");
+			return;
+		}
+		else
+		{
+			StartClient();
+		}
 	}
 }
 
@@ -388,6 +405,7 @@ void NetworkManager::StartServer()
 		{
 			AcceptConnectionsTCP();
 		});
+
 	while (true)
 	{
 		if (numConnections > 0)
@@ -407,6 +425,8 @@ void NetworkManager::StartServer()
 void NetworkManager::StartClient()
 {
 	m_GroundWeb->PrintToCMD("Staring up as client...");
+
+	ConnectTCP();
 }
 
 void NetworkManager::FlagForServer()
@@ -446,6 +466,7 @@ void NetworkManager::PrintNetworkSettings()
 
 void NetworkManager::SetIP(string ip)
 {
+	//127.0.0.1 to connect to self
 	m_IP = ip;
 	m_IsIPSet = true;
 
@@ -466,5 +487,19 @@ void NetworkManager::SetPort(string port)
 	{
 		m_Port = port;
 		m_GroundWeb->PrintToCMD("Port set to: " + m_Port);
+	}
+}
+
+void NetworkManager::SendMessageTCP(string message)
+{
+	if (m_IsConnected == false)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: Can't send message when you are not connected");
+		return;
+	}
+
+	if (message.length() > 0)
+	{
+		SendDataTCP(message.c_str());
 	}
 }
