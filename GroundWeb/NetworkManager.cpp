@@ -1,39 +1,67 @@
 #include "NetworkManager.h"
-#include "iostream"
-#include  <WS2tcpip.h>
-#include <thread>
-#include "CommandInputHandler.h"
 
-using namespace std;
-
-NetworkManager* NetworkManager::instance = nullptr;
-
-void NetworkManager::Init(CommandInputHandler* cmdInst)
+NetworkManager::NetworkManager(GroundWeb* web)
 {
-	cmd = cmdInst;
+	UDPSocketIn = INVALID_SOCKET;
+	UDPSocketOut = INVALID_SOCKET;
+	TCPSocketIn = INVALID_SOCKET;
+	TCPSocketOut = INVALID_SOCKET;
 
-	cmd->PrintToCMD("NetworkManager::Init() called.");
+	UDPinAddr = { 0 };
+	UDPoutAddr = { 0 };
+	TCPinAddr = { 0 };
+	TCPoutAddr = { 0 };
+
+	m_GroundWeb = web;
+
+	RegisterNetworkCommands();
+	Init();
+	CreateTCPSockets();
+}
+
+NetworkManager::~NetworkManager()
+{
+
+}
+
+void NetworkManager::Init()
+{
+	m_GroundWeb->PrintToCMD("NetworkManager::Init() called.");
 
 	WSADATA lpWSAData;
 	int error = WSAStartup(MAKEWORD(2, 2), &lpWSAData);
 
 	if (error != 0)
 	{
-		cmd->PrintToCMD("WSAData failed with error code: " + error);
+		m_GroundWeb->PrintToCMD("WSAData failed with error code: " + error);
+	}
+}
+
+void NetworkManager::CreateTCPSockets()
+{
+	m_GroundWeb->PrintToCMD("Creating TCP Sockets...");
+
+	TCPSocketIn = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (TCPSocketIn == INVALID_SOCKET)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: TCPSocketIn was not created.");
+	}
+
+	TCPSocketOut = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (TCPSocketOut == INVALID_SOCKET)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: TCPSocketOut was not created.");
+		Shutdown();
 	}
 }
 
 void NetworkManager::CreateUDPSockets()
 {
-	u_long isBlocking = 1;
-
 	UDPSocketIn = socket(AF_INET, SOCK_DGRAM, 0);
-
-	ioctlsocket(UDPSocketIn, FIONBIO, &isBlocking);
-
+	
 	if (UDPSocketIn == INVALID_SOCKET)
 	{
-		cmd->PrintToCMD("Failed to create inbound socket");
+		m_GroundWeb->PrintToCMD("ERROR: Failed to create UDPSocketIn");
 		Shutdown();
 	}
 
@@ -41,50 +69,152 @@ void NetworkManager::CreateUDPSockets()
 
 	if (UDPSocketOut == INVALID_SOCKET)
 	{
-		cmd->PrintToCMD("Failed to create outbound socket");
+		m_GroundWeb->PrintToCMD("ERROR: Failed to create UDPSocketOut");
 		Shutdown();
 	}
 }
 
-void NetworkManager::SetRemoteData(int port, string cxIP)
+void NetworkManager::BindUDP()
 {
-	outAddr.sin_family = AF_INET;
+	// Using IPv4
+	UDPinAddr.sin_family = AF_INET;
 
-	outAddr.sin_port = htons(port);
+	//Port 8889
+	UDPinAddr.sin_port = htons(8889);
 
-	inet_pton(AF_INET, cxIP.c_str(), &outAddr.sin_addr);
+	//From any available address (Computers can have multiple)
+	UDPinAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	int bindError = ::bind(UDPSocketIn, reinterpret_cast<SOCKADDR*>(&UDPinAddr), sizeof(UDPinAddr));
+
+	if (bindError == SOCKET_ERROR)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: Binding UDPSocketIn Failed");
+
+		Shutdown();
+	}
 }
 
-void NetworkManager::StartMultithreading()
+void NetworkManager::BindTCP()
 {
-	listenThread = thread([this]
+	//IPv4
+	TCPinAddr.sin_family = AF_INET;
+	//Port to listen on
+	TCPinAddr.sin_port = htons(8889);
+	//Listen for any incoming connection
+	TCPinAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	int bindError = ::bind(TCPSocketIn, reinterpret_cast<sockaddr*>(&TCPinAddr), sizeof(TCPinAddr));
+
+	if (bindError == SOCKET_ERROR)
 	{
-		ListenForMessage();
-	});
+		m_GroundWeb->PrintToCMD("ERROR: Binding TCPSocketIn failed");
+
+		Shutdown();
+	}
 }
 
-void NetworkManager::ListenForMessage()
+void NetworkManager::ListenTCP()
 {
-	while (isThreadRunning)
-	{
-		int rcvSize = ReceiveData(recString);
+	//MUST be called after binding TCP
+	listen(TCPSocketIn, SOMAXCONN);
+}
 
-		if (rcvSize > 0)
+void NetworkManager::ConnectTCP()
+{
+	//Client connection to the listening socket
+	TCPoutAddr.sin_family = AF_INET;
+	TCPoutAddr.sin_port = htons(8889);
+	inet_pton(AF_INET, "127.0.0.1", &TCPoutAddr.sin_addr);
+
+	int connectStatus = connect(TCPSocketOut, reinterpret_cast<sockaddr*>(&TCPoutAddr), sizeof(TCPoutAddr));
+
+	if (connectStatus == SOCKET_ERROR)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: Error connecting through TCP socket info supplied");
+		Shutdown();
+	}
+
+	numConnections++;
+
+	//Makes socket Async
+	unsigned long bit = 1;
+	ioctlsocket(TCPSocketOut, FIONBIO, &bit);
+	ioctlsocket(TCPSocketIn, FIONBIO, &bit);
+}
+
+void NetworkManager::AcceptConnectionsTCP()
+{
+	int clientSize = sizeof(TCPoutAddr);
+
+	TCPSocketOut = accept(TCPSocketIn, reinterpret_cast<SOCKADDR*>(&TCPoutAddr), &clientSize);
+
+	if (TCPSocketOut != INVALID_SOCKET)
+	{
+		numConnections++;
+
+		char ipConnected[32];
+
+		inet_ntop(AF_INET, &TCPoutAddr.sin_addr, ipConnected, 32);
+	}
+
+	unsigned long bit = 1;
+	ioctlsocket(TCPSocketIn, FIONBIO, &bit);
+}
+
+void NetworkManager::SendDataTCP(const char* data)
+{
+	int totalByteSize = send(TCPSocketOut, data, strlen(data) + 1, 0);
+
+	if (totalByteSize == SOCKET_ERROR)
+	{
+		int error = WSAGetLastError();
+
+		if (error = WSAEWOULDBLOCK)
 		{
-			cmd->PrintToCMD(recString);
+			string sData = data;
+
+			m_GroundWeb->PrintToCMD("TCP - Sent the data across: " + sData + " size was: " + to_string(totalByteSize));
+		}
+		else
+		{
+			m_GroundWeb->PrintToCMD("ERROR: Failed to send TCP message");
+			Shutdown(); //May need to be removed in the future
 		}
 	}
 }
 
-int NetworkManager::ReceiveData(char* ReceiveBuffer)
+void NetworkManager::SetRemoteData()
+{
+	UDPoutAddr.sin_family = AF_INET;
+
+	UDPoutAddr.sin_port = htons(8889);
+
+	inet_pton(AF_INET, "127.0.0.1", &UDPoutAddr.sin_addr);
+}
+
+void NetworkManager::SendDataUDP(const char* data)
+{
+	int totalBytes = sendto(UDPSocketOut, data, strlen(data) + 1, 0, 
+		reinterpret_cast<SOCKADDR*>(&UDPoutAddr), sizeof(UDPoutAddr));
+
+	if (totalBytes == SOCKET_ERROR)
+	{
+		Shutdown();
+	}
+
+	m_GroundWeb->PrintToCMD("UDP - Sent: " + to_string(totalBytes) + " of data ");
+}
+
+int NetworkManager::ReceiveDataUDP(char* ReceiveBuffer)
 {
 	int BytesReceived = 0;
-	int inAddrSize = sizeof(inAddr);
+	int inAddrSize = sizeof(UDPinAddr);
 
 	BytesReceived = recvfrom(UDPSocketIn, ReceiveBuffer, 65535, 0,
-		reinterpret_cast<SOCKADDR*>(&inAddr), &inAddrSize);
+		reinterpret_cast<SOCKADDR*>(&UDPinAddr), &inAddrSize);
 
-	if (BytesReceived == WSAEWOULDBLOCK)
+	if (BytesReceived == SOCKET_ERROR)
 	{
 		Shutdown();
 	}
@@ -92,55 +222,126 @@ int NetworkManager::ReceiveData(char* ReceiveBuffer)
 	return BytesReceived;
 }
 
-void NetworkManager::BindUDP()
+int NetworkManager::ReceiveDataTCP(char* message)
 {
-	// Using IPv4
-	inAddr.sin_family = AF_INET;
+	int bytesReceived = recv(TCPSocketOut, message, strlen(message) + 1, 0);
 
-	//Port 8889
-	inAddr.sin_port = htons(8889);
-
-	//From any available address (Computers can have multiple)
-	inAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	int bindError = ::bind(UDPSocketIn, reinterpret_cast<SOCKADDR*>(&inAddr), sizeof(inAddr));
-
-	if (bindError == SOCKET_ERROR)
+	if(bytesReceived == SOCKET_ERROR)
 	{
-		cmd->PrintToCMD("[ERROR] binding failed.");
+		int error = WSAGetLastError();
+		if (error != WSAEWOULDBLOCK)
+		{
+			m_GroundWeb->PrintToCMD("ERROR: Error receiving from TCP");
+			Shutdown();
+		}
+	}
 
-		Shutdown();
+	return bytesReceived;
+}
+
+//Register Commands
+
+void NetworkManager::RegisterNetworkCommands()
+{
+	string flagServerDesc = "Sets a flag to allow you to act as a server";
+	m_GroundWeb->RegisterCommand("flagserver", flagServerDesc, [this](std::string _)
+		{
+			FlagForServer();
+		});
+
+	string flagClientDesc = "Sets a flag to allow you to act as a client";
+	m_GroundWeb->RegisterCommand("flagclient", flagServerDesc, [this](std::string _)
+		{
+			FlagForClient();
+		});
+
+	string startNetworkingDesc = "Starts the network if all valid information is populated";
+	m_GroundWeb->RegisterCommand("startnetwork", startNetworkingDesc, [this](std::string _)
+		{
+			StartNetworking();
+		});
+
+	string setIPDesc = "Sets the ip to be used for a connection";
+	m_GroundWeb->RegisterCommand("setIP", startNetworkingDesc, [this](std::string enteredIP)
+		{
+			SetIP(enteredIP);
+		});
+
+	m_GroundWeb->PrintToCMD("Network commands registered");
+}
+
+//Network Commands
+void NetworkManager::StartNetworking()
+{
+	if (m_IsIPSet == false)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: IP Address not set");
+		return;
+	}
+
+	if (m_IsServer == true)
+	{
+		StartServer();
+	}
+	else if (m_IsServer == false)
+	{
+		StartClient();
 	}
 }
 
-void NetworkManager::SendData(const char* data)
+void NetworkManager::StartServer()
 {
-	int totalBytes = sendto(UDPSocketOut, data, strlen(data) + 1, 0, 
-		reinterpret_cast<SOCKADDR*>(&outAddr), sizeof(outAddr));
+	m_GroundWeb->PrintToCMD("Staring up as server...");
+}
 
-	if (totalBytes == SOCKET_ERROR)
+void NetworkManager::StartClient()
+{
+	m_GroundWeb->PrintToCMD("Staring up as client...");
+}
+
+void NetworkManager::FlagForServer()
+{
+	if (m_IsServer == false)
 	{
-		Shutdown();
+		m_IsServer = !m_IsServer;
 	}
 
-	cmd->PrintToCMD("sent : " + to_string(totalBytes) + " of data");
+	m_GroundWeb->PrintToCMD("You are now flagged to act as a server.");
+}
+
+void NetworkManager::FlagForClient()
+{
+	if (m_IsServer == true)
+	{
+		m_IsServer = !m_IsServer;
+	}
+
+	m_GroundWeb->PrintToCMD("You are now flagged to act as a client");
+}
+
+void NetworkManager::SetIP(string ip)
+{
+	m_IP = ip;
+	m_IsIPSet = true;
+
+	m_GroundWeb->PrintToCMD("IP Address set to: " + ip);
 }
 
 void NetworkManager::Shutdown()
 {
-	cmd->PrintToCMD("NetworkManager::Shutdown() called.");
+	m_GroundWeb->PrintToCMD("NetworkManager::Shutdown() called.");
 
 	int errorCode = WSAGetLastError();
 	if (errorCode != 0)
 	{
-		cmd->PrintToCMD("Forced shutdown due to WSAError#: " + to_string(errorCode));
+		m_GroundWeb->PrintToCMD("Forced shutdown due to WSAError#: " + errorCode);
 	}
 
 	if (UDPSocketIn != INVALID_SOCKET)
 	{
 		if (closesocket(UDPSocketIn) != 0)
 		{
-			cmd->PrintToCMD("[ERROR] error closing UDP In Socket.");
+			m_GroundWeb->PrintToCMD("ERROR: error closing UDP In Socket.");
 		}
 	}
 
@@ -148,19 +349,28 @@ void NetworkManager::Shutdown()
 	{
 		if (closesocket(UDPSocketIn) != 0)
 		{
-			cmd->PrintToCMD("[ERROR] error closing UDP Out Socket.");
+			m_GroundWeb->PrintToCMD("ERROR: error closing UDP Out Socket.");
+		}
+	}
+
+	if (TCPSocketIn != INVALID_SOCKET)
+	{
+		if (closesocket(TCPSocketIn) != 0)
+		{
+			m_GroundWeb->PrintToCMD("ERROR: Failed to close TCPSocketIn");
+		}
+	}
+
+	if (TCPSocketOut != INVALID_SOCKET)
+	{
+		if (closesocket(TCPSocketOut) != 0)
+		{
+			m_GroundWeb->PrintToCMD("ERROR: Failed to close TCPSocketOut");
 		}
 	}
 
 	WSACleanup();
 	exit(0);
-}
-
-void NetworkManager::ShutdownApplication()
-{
-	isThreadRunning = false;
-	listenThread.join();
-	Shutdown();
 }
 
 

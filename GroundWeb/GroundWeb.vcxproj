@@ -85,19 +85,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CommandInputHandler.cpp" />
     <ClCompile Include="NetworkManager.cpp" />
     <QtRcc Include="GroundWeb.qrc" />
     <QtUic Include="GroundWeb.ui" />
     <QtMoc Include="GroundWeb.h" />
     <ClCompile Include="GroundWeb.cpp" />
-    <ClCompile Include="HangMan_Project.cpp" />
     <ClCompile Include="main.cpp" />
     <None Include="GroundWeb.ico" />
     <ResourceCompile Include="GroundWeb.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CommandInputHandler.h" />
     <ClInclude Include="NetworkManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

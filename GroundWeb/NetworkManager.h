@@ -2,63 +2,79 @@
 #pragma comment (lib, "ws2_32.lib")
 
 #define WIN32_LEAN_AND_MEAN
-#include <string>
-#include <thread>
 #include <windows.h>
 #include <WinSock2.h>
+#include  <WS2tcpip.h>
+#include "iostream"
+#include "GroundWeb.h"
 
-using namespace std;
-
-class CommandInputHandler;
+using std::to_string;
 
 class NetworkManager
 {
 public:
-	//Instances
-	CommandInputHandler* cmd;
+	NetworkManager(GroundWeb* web);
+	~NetworkManager();
 
-	//Threads
-	thread listenThread;
+	static const int MAX_RCV_SIZE = 65535;
 
-	//Vars
-	int userPort;
-	string connectIP;
-	string userName;
-	bool isThreadRunning = true;
-	char* recString = new char[65543];
-
-
-	static NetworkManager* GetInstance()
-	{
-		if (instance == nullptr)
-		{
-			instance = new NetworkManager();
-		}
-
-		return instance;
-	}
-
-	void Init(CommandInputHandler* cmdInst);
-	void Shutdown();
+	//Socket Creation
 	void CreateUDPSockets();
+	void CreateTCPSockets();
+	//Bind Sockets
 	void BindUDP();
-	void SetRemoteData(int port, string cxIP);
-	void SendData(const char* data);
-	int ReceiveData(char* ReceiveBuffer);
-	void ListenForMessage();
-	void ShutdownApplication();
-	void StartMultithreading();
+	void BindTCP();
+	//Listen
+	void ListenTCP();
+	//Client Side Connection
+	void ConnectTCP();
+	//Server Side Accept Connections
+	void AcceptConnectionsTCP();
+	//Send Data
+	void SendDataTCP(const char* data);
+	void SendDataUDP(const char* data);
+	//Receive Data
+	int ReceiveDataUDP(char* ReceiveBuffer);
+	int ReceiveDataTCP(char* message);
+
+	void SetRemoteData();
+	int GetNumConnections() { return numConnections; }
+
+	//Commands
+	void RegisterNetworkCommands();
+	void StartNetworking();
+	void StartServer();
+	void StartClient();
+	void FlagForServer();
+	void FlagForClient();
+	void SetIP(string ip);
+	void SetPort(string port);
+
+	//Call on Shutdown
+	void Shutdown();
 
 private:
+	//Private Functions
+	void Init();
 
-	//Sockets
+	//Private Types
+	GroundWeb* m_GroundWeb;
+
 	SOCKET UDPSocketIn;
 	SOCKET UDPSocketOut;
+	SOCKET TCPSocketIn;
+	SOCKET TCPSocketOut;
 
-	SOCKADDR_IN outAddr;
-	SOCKADDR_IN inAddr;
+	SOCKADDR_IN UDPoutAddr;
+	SOCKADDR_IN UDPinAddr;
+	SOCKADDR_IN TCPinAddr;
+	SOCKADDR_IN TCPoutAddr;
 
-	//Static Ref
-	static NetworkManager* instance;
+	//Private Variables
+	int numConnections = 0;
+	bool m_IsServer = false;
+	bool m_IsIPSet = false;
+	string m_IP;
+	string m_Port = "8889";
 };
 

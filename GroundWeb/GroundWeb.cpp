@@ -58,7 +58,7 @@ void GroundWeb::HandleCommands(string cmdString)
     {
         if (StringStartsWith(cmdString, command.m_Name))
         {
-            string content = cmdString.substr(command.m_Name.length());       
+            string content = cmdString.substr(command.m_Name.length() + 1);       
             command.m_Handler(content);
         }
     }
@@ -115,4 +115,6 @@ void GroundWeb::RegisterBuiltInCommands()
         {
             ClearCommandLine();
         });
+
+    PrintToCMD("Builtin commands registered");
 }
