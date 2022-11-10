@@ -5,10 +5,15 @@
 #include <windows.h>
 #include <WinSock2.h>
 #include  <WS2tcpip.h>
+#include <thread>
+
+
 #include "iostream"
 #include "GroundWeb.h"
 
 using std::to_string;
+using std::thread;
+using std::stoi;
 
 class NetworkManager
 {
@@ -36,6 +41,8 @@ public:
 	//Receive Data
 	int ReceiveDataUDP(char* ReceiveBuffer);
 	int ReceiveDataTCP(char* message);
+	//Receive Message
+	void ReceiveMessage();
 
 	void SetRemoteData();
 	int GetNumConnections() { return numConnections; }
@@ -47,6 +54,7 @@ public:
 	void StartClient();
 	void FlagForServer();
 	void FlagForClient();
+	void PrintNetworkSettings();
 	void SetIP(string ip);
 	void SetPort(string port);
 
@@ -74,7 +82,13 @@ private:
 	int numConnections = 0;
 	bool m_IsServer = false;
 	bool m_IsIPSet = false;
+	bool m_PortOverride = false;
 	string m_IP;
 	string m_Port = "8889";
+	vector<SOCKET> m_Clients;
+
+	//Private Threads
+	thread m_ListenThread;
+	thread m_ReceiveThread;
 };
 

@@ -79,19 +79,23 @@ void NetworkManager::BindUDP()
 	// Using IPv4
 	UDPinAddr.sin_family = AF_INET;
 
-	//Port 8889
-	UDPinAddr.sin_port = htons(8889);
+	//Port
+	UDPinAddr.sin_port = htons(stoi(m_Port));
 
 	//From any available address (Computers can have multiple)
 	UDPinAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	int bindError = ::bind(UDPSocketIn, reinterpret_cast<SOCKADDR*>(&UDPinAddr), sizeof(UDPinAddr));
+	int bindError = bind(UDPSocketIn, reinterpret_cast<SOCKADDR*>(&UDPinAddr), sizeof(UDPinAddr));
 
 	if (bindError == SOCKET_ERROR)
 	{
 		m_GroundWeb->PrintToCMD("ERROR: Binding UDPSocketIn Failed");
 
 		Shutdown();
+	}
+	else
+	{
+		m_GroundWeb->PrintToCMD("Bound UDPSocketIn");
 	}
 }
 
@@ -100,17 +104,20 @@ void NetworkManager::BindTCP()
 	//IPv4
 	TCPinAddr.sin_family = AF_INET;
 	//Port to listen on
-	TCPinAddr.sin_port = htons(8889);
+	TCPinAddr.sin_port = htons(stoi(m_Port));
 	//Listen for any incoming connection
 	TCPinAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	int bindError = ::bind(TCPSocketIn, reinterpret_cast<sockaddr*>(&TCPinAddr), sizeof(TCPinAddr));
+	int bindError = bind(TCPSocketIn, reinterpret_cast<sockaddr*>(&TCPinAddr), sizeof(TCPinAddr));
 
 	if (bindError == SOCKET_ERROR)
 	{
 		m_GroundWeb->PrintToCMD("ERROR: Binding TCPSocketIn failed");
-
 		Shutdown();
+	}
+	else
+	{
+		m_GroundWeb->PrintToCMD("Bound TCPSocketIn");
 	}
 }
 
@@ -118,6 +125,8 @@ void NetworkManager::ListenTCP()
 {
 	//MUST be called after binding TCP
 	listen(TCPSocketIn, SOMAXCONN);
+
+	m_GroundWeb->PrintToCMD("Listen called on TCPSocketIn");
 }
 
 void NetworkManager::ConnectTCP()
@@ -145,21 +154,28 @@ void NetworkManager::ConnectTCP()
 
 void NetworkManager::AcceptConnectionsTCP()
 {
-	int clientSize = sizeof(TCPoutAddr);
+	m_GroundWeb->PrintToCMD("Now Accepting TCP Connections");
 
-	TCPSocketOut = accept(TCPSocketIn, reinterpret_cast<SOCKADDR*>(&TCPoutAddr), &clientSize);
-
-	if (TCPSocketOut != INVALID_SOCKET)
+	while (true)
 	{
-		numConnections++;
+		int clientSize = sizeof(TCPoutAddr);
 
-		char ipConnected[32];
+		TCPSocketOut = accept(TCPSocketIn, reinterpret_cast<SOCKADDR*>(&TCPoutAddr), &clientSize);
 
-		inet_ntop(AF_INET, &TCPoutAddr.sin_addr, ipConnected, 32);
+		if (TCPSocketOut != INVALID_SOCKET)
+		{
+			numConnections++;
+
+			char ipConnected[32];
+
+			inet_ntop(AF_INET, &TCPoutAddr.sin_addr, ipConnected, 32);
+
+			m_Clients.push_back(TCPSocketOut);
+		}
+
+		unsigned long bit = 1;
+		ioctlsocket(TCPSocketIn, FIONBIO, &bit);
 	}
-
-	unsigned long bit = 1;
-	ioctlsocket(TCPSocketIn, FIONBIO, &bit);
 }
 
 void NetworkManager::SendDataTCP(const char* data)
@@ -239,92 +255,18 @@ int NetworkManager::ReceiveDataTCP(char* message)
 	return bytesReceived;
 }
 
-//Register Commands
-
-void NetworkManager::RegisterNetworkCommands()
+void NetworkManager::ReceiveMessage()
 {
-	string flagServerDesc = "Sets a flag to allow you to act as a server";
-	m_GroundWeb->RegisterCommand("flagserver", flagServerDesc, [this](std::string _)
+	while (true)
+	{
+		char rcvMessage[MAX_RCV_SIZE];
+		int size = ReceiveDataTCP(rcvMessage);
+		if (size > 0)
 		{
-			FlagForServer();
-		});
-
-	string flagClientDesc = "Sets a flag to allow you to act as a client";
-	m_GroundWeb->RegisterCommand("flagclient", flagServerDesc, [this](std::string _)
-		{
-			FlagForClient();
-		});
-
-	string startNetworkingDesc = "Starts the network if all valid information is populated";
-	m_GroundWeb->RegisterCommand("startnetwork", startNetworkingDesc, [this](std::string _)
-		{
-			StartNetworking();
-		});
-
-	string setIPDesc = "Sets the ip to be used for a connection";
-	m_GroundWeb->RegisterCommand("setIP", startNetworkingDesc, [this](std::string enteredIP)
-		{
-			SetIP(enteredIP);
-		});
-
-	m_GroundWeb->PrintToCMD("Network commands registered");
-}
-
-//Network Commands
-void NetworkManager::StartNetworking()
-{
-	if (m_IsIPSet == false)
-	{
-		m_GroundWeb->PrintToCMD("ERROR: IP Address not set");
-		return;
+			string msg = rcvMessage;
+			m_GroundWeb->PrintToCMD("Received Message: " + msg);
+		}
 	}
-
-	if (m_IsServer == true)
-	{
-		StartServer();
-	}
-	else if (m_IsServer == false)
-	{
-		StartClient();
-	}
-}
-
-void NetworkManager::StartServer()
-{
-	m_GroundWeb->PrintToCMD("Staring up as server...");
-}
-
-void NetworkManager::StartClient()
-{
-	m_GroundWeb->PrintToCMD("Staring up as client...");
-}
-
-void NetworkManager::FlagForServer()
-{
-	if (m_IsServer == false)
-	{
-		m_IsServer = !m_IsServer;
-	}
-
-	m_GroundWeb->PrintToCMD("You are now flagged to act as a server.");
-}
-
-void NetworkManager::FlagForClient()
-{
-	if (m_IsServer == true)
-	{
-		m_IsServer = !m_IsServer;
-	}
-
-	m_GroundWeb->PrintToCMD("You are now flagged to act as a client");
-}
-
-void NetworkManager::SetIP(string ip)
-{
-	m_IP = ip;
-	m_IsIPSet = true;
-
-	m_GroundWeb->PrintToCMD("IP Address set to: " + ip);
 }
 
 void NetworkManager::Shutdown()
@@ -373,4 +315,156 @@ void NetworkManager::Shutdown()
 	exit(0);
 }
 
+//Register Commands
 
+void NetworkManager::RegisterNetworkCommands()
+{
+	string flagServerDesc = "Sets a flag to allow you to act as a server";
+	m_GroundWeb->RegisterCommand("flagserver", flagServerDesc, [this](std::string _)
+		{
+			FlagForServer();
+		});
+
+	string flagClientDesc = "Sets a flag to allow you to act as a client";
+	m_GroundWeb->RegisterCommand("flagclient", flagServerDesc, [this](std::string _)
+		{
+			FlagForClient();
+		});
+
+	string startNetworkingDesc = "Starts the network if all valid information is populated";
+	m_GroundWeb->RegisterCommand("startnetwork", startNetworkingDesc, [this](std::string _)
+		{
+			StartNetworking();
+		});
+
+	string setIPDesc = "Sets the ip to be used for a connection";
+	m_GroundWeb->RegisterCommand("setip", setIPDesc, [this](std::string enteredIP)
+		{
+			SetIP(enteredIP);
+		});
+
+	string setPortDesc = "Sets the port to be used for a connection";
+	m_GroundWeb->RegisterCommand("setport", setPortDesc, [this](std::string enteredPort)
+		{
+			SetPort(enteredPort);
+		});
+
+	string printNetworkInfoDesc = "Sets the port to be used for a connection";
+	m_GroundWeb->RegisterCommand("networksettings", printNetworkInfoDesc, [this](std::string _)
+		{
+			PrintNetworkSettings();
+		});
+
+	m_GroundWeb->PrintToCMD("Network commands registered");
+}
+
+//Network Commands
+void NetworkManager::StartNetworking()
+{
+	if (m_IsIPSet == false)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: IP Address not set");
+		return;
+	}
+
+	if (m_IsServer == true)
+	{
+		StartServer();
+	}
+	else if (m_IsServer == false)
+	{
+		StartClient();
+	}
+}
+
+void NetworkManager::StartServer()
+{
+	m_GroundWeb->PrintToCMD("Staring up as server...");
+
+	BindTCP();
+	ListenTCP();
+
+	m_ListenThread = thread([this]
+		{
+			AcceptConnectionsTCP();
+		});
+	while (true)
+	{
+		if (numConnections > 0)
+		{
+			m_GroundWeb->PrintToCMD("ReceiveMessage() Called");
+
+			m_ReceiveThread = thread([this]
+				{
+					ReceiveMessage();
+				});
+
+			break;
+		}
+	}
+}
+
+void NetworkManager::StartClient()
+{
+	m_GroundWeb->PrintToCMD("Staring up as client...");
+}
+
+void NetworkManager::FlagForServer()
+{
+	if (m_IsServer == false)
+	{
+		m_IsServer = !m_IsServer;
+	}
+
+	m_GroundWeb->PrintToCMD("You are now flagged to act as a server.");
+}
+
+void NetworkManager::FlagForClient()
+{
+	if (m_IsServer == true)
+	{
+		m_IsServer = !m_IsServer;
+	}
+
+	m_GroundWeb->PrintToCMD("You are now flagged to act as a client");
+}
+
+void NetworkManager::PrintNetworkSettings()
+{
+	if (m_IsServer == true)
+	{
+		m_GroundWeb->PrintToCMD("Mode: Server");
+	}
+	else
+	{
+		m_GroundWeb->PrintToCMD("Mode: Client");
+	}
+
+	m_GroundWeb->PrintToCMD("Port: " + m_Port);
+	m_GroundWeb->PrintToCMD("IP: " + m_IP);
+}
+
+void NetworkManager::SetIP(string ip)
+{
+	m_IP = ip;
+	m_IsIPSet = true;
+
+	m_GroundWeb->PrintToCMD("IP Address set to: " + ip);
+}
+
+void NetworkManager::SetPort(string port)
+{
+	m_GroundWeb->PrintToCMD("Default Port: 8889");
+	m_GroundWeb->PrintToCMD("Current Port: " + m_Port);
+
+	if (m_PortOverride == false)
+	{
+		m_GroundWeb->PrintToCMD("Default port 8889 is recommended, to override the default call /setport again");
+		m_PortOverride = true;
+	}
+	else
+	{
+		m_Port = port;
+		m_GroundWeb->PrintToCMD("Port set to: " + m_Port);
+	}
+}
