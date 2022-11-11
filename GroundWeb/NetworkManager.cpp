@@ -137,13 +137,17 @@ void NetworkManager::ConnectTCP()
 	//Change Ip to 127.0.0.1 To Connect To Self
 	inet_pton(AF_INET, m_IP.c_str(), &TCPoutAddr.sin_addr);
 
+	m_GroundWeb->PrintToCMD("Attempting connection to " + m_IP + " on " + m_Port);
+
 	int connectStatus = connect(TCPSocketOut, reinterpret_cast<sockaddr*>(&TCPoutAddr), sizeof(TCPoutAddr));
+
+	m_GroundWeb->PrintToCMD("Connection Status: " + to_string(connectStatus));
 
 	if (connectStatus == SOCKET_ERROR)
 	{
 		m_GroundWeb->PrintToCMD("ERROR: Error connecting through TCP socket info supplied");
 		m_IsConnected = false;
-		Shutdown();
+		//Shutdown();
 	}
 
 	if (connectStatus != SOCKET_ERROR)
@@ -167,11 +171,15 @@ void NetworkManager::AcceptConnectionsTCP()
 
 	while (true)
 	{
+		SOCKET tempSocket = INVALID_SOCKET;
+		ioctlsocket(tempSocket, FIONBIO, &bit);
+
 		int clientSize = sizeof(TCPoutAddr);
 
 		TCPSocketOut = accept(TCPSocketIn, reinterpret_cast<SOCKADDR*>(&TCPoutAddr), &clientSize);
+		tempSocket = TCPSocketOut;
 
-		if (TCPSocketOut != INVALID_SOCKET)
+		if (tempSocket != INVALID_SOCKET)
 		{
 			numConnections++;
 
@@ -179,10 +187,15 @@ void NetworkManager::AcceptConnectionsTCP()
 
 			inet_ntop(AF_INET, &TCPoutAddr.sin_addr, ipConnected, 32);
 
-			m_Clients.push_back(TCPSocketOut);
+			m_Mutex1.lock();
+			m_Clients.push_back(tempSocket);
+			m_Mutex1.unlock();
+
+			string ip = ipConnected;
+
+			m_GroundWeb->PrintToCMD("Accepted Connection From: " + ip);
 		}
 
-		unsigned long bit = 1;
 		ioctlsocket(TCPSocketIn, FIONBIO, &bit);
 	}
 }
@@ -249,7 +262,7 @@ int NetworkManager::ReceiveDataUDP(char* ReceiveBuffer)
 
 int NetworkManager::ReceiveDataTCP(char* message, SOCKET sock)
 {
-	int bytesReceived = recv(sock, message, strlen(message) + 1, 0);
+	int bytesReceived = recv(sock, message, MAX_RCV_SIZE, 0);
 
 	if (bytesReceived == SOCKET_ERROR)
 	{
@@ -271,9 +284,15 @@ int NetworkManager::ReceiveDataTCP(char* message, SOCKET sock)
 
 void NetworkManager::ReceiveMessage()
 {
+	m_GroundWeb->PrintToCMD("ReceiveMessage() Called");
+
 	while (true)
 	{
-		for (auto clientSocket : m_Clients)
+		m_Mutex1.lock();
+		vector<SOCKET> tempClients = m_Clients;
+		m_Mutex1.unlock();
+
+		for (auto clientSocket : tempClients)
 		{
 			char rcvMessage[MAX_RCV_SIZE];
 			int size = ReceiveDataTCP(rcvMessage, clientSocket);
@@ -328,8 +347,15 @@ void NetworkManager::Shutdown()
 		}
 	}
 
-	m_ListenThread.join();
-	m_ReceiveThread.join();
+	if (m_ListenThreadIsRunning == true)
+	{
+		m_ListenThread.join();
+	}
+
+	if (m_ReceiveThreadIsRunning = true)
+	{
+		m_ReceiveThread.join();
+	}
 
 	WSACleanup();
 	exit(0);
@@ -387,6 +413,8 @@ void NetworkManager::RegisterNetworkCommands()
 //Network Commands
 void NetworkManager::StartNetworking()
 {
+	BindTCP();
+
 	if (m_IsServer == true)
 	{
 		StartServer();
@@ -409,21 +437,23 @@ void NetworkManager::StartServer()
 {
 	m_GroundWeb->PrintToCMD("Staring up as server...");
 
-	BindTCP();
 	ListenTCP();
 
 	m_ListenThread = thread([this]
 		{
+			m_ListenThreadIsRunning = true;
+
 			AcceptConnectionsTCP();
 		});
 
 	m_ReceiveThread = thread([this]
 		{
+			m_ReceiveThreadIsRunning = true;
+
 			while (true)
 			{
 				if (numConnections > 0)
 				{
-					m_GroundWeb->PrintToCMD("ReceiveMessage() Called");
 					break;
 				}
 			}
@@ -510,6 +540,7 @@ void NetworkManager::SendMessageTCP(string message)
 
 	if (message.length() > 0)
 	{
+		m_GroundWeb->PrintToCMD("Sent: " + message);
 		SendDataTCP(message.c_str());
 	}
 }

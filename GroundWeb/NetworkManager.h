@@ -6,6 +6,7 @@
 #include <WinSock2.h>
 #include  <WS2tcpip.h>
 #include <thread>
+#include <mutex>
 
 
 #include "iostream"
@@ -14,6 +15,7 @@
 using std::to_string;
 using std::thread;
 using std::stoi;
+using std::mutex;
 
 class NetworkManager
 {
@@ -85,6 +87,8 @@ private:
 	bool m_IsIPSet = false;
 	bool m_IsConnected = false;
 	bool m_PortOverride = false;
+	bool m_ListenThreadIsRunning = false;
+	bool m_ReceiveThreadIsRunning = false;
 	string m_IP;
 	string m_Port = "8889";
 	vector<SOCKET> m_Clients;
@@ -92,5 +96,8 @@ private:
 	//Private Threads
 	thread m_ListenThread;
 	thread m_ReceiveThread;
+	//Mutex
+	mutex m_Mutex1;
+	
 };
 
