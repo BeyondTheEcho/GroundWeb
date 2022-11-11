@@ -162,6 +162,9 @@ void NetworkManager::AcceptConnectionsTCP()
 {
 	m_GroundWeb->PrintToCMD("Now Accepting TCP Connections");
 
+	unsigned long bit = 1;
+	ioctlsocket(TCPSocketOut, FIONBIO, &bit);
+
 	while (true)
 	{
 		int clientSize = sizeof(TCPoutAddr);
@@ -244,33 +247,41 @@ int NetworkManager::ReceiveDataUDP(char* ReceiveBuffer)
 	return BytesReceived;
 }
 
-int NetworkManager::ReceiveDataTCP(char* message)
+int NetworkManager::ReceiveDataTCP(char* message, SOCKET sock)
 {
-	int bytesReceived = recv(TCPSocketOut, message, strlen(message) + 1, 0);
+	int bytesReceived = recv(sock, message, strlen(message) + 1, 0);
 
-	if(bytesReceived == SOCKET_ERROR)
+	if (bytesReceived == SOCKET_ERROR)
 	{
 		int error = WSAGetLastError();
+
 		if (error != WSAEWOULDBLOCK)
 		{
-			m_GroundWeb->PrintToCMD("ERROR: Error receiving from TCP");
-			Shutdown();
+			m_GroundWeb->PrintToCMD("WSA ERROR: " + to_string(error) + " - Error receiving from TCP");
+			//Shutdown();
+
+			return 0;
 		}
 	}
-
-	return bytesReceived;
+	else if (bytesReceived != SOCKET_ERROR)
+	{
+		return bytesReceived;
+	}
 }
 
 void NetworkManager::ReceiveMessage()
 {
 	while (true)
 	{
-		char rcvMessage[MAX_RCV_SIZE];
-		int size = ReceiveDataTCP(rcvMessage);
-		if (size > 0)
+		for (auto clientSocket : m_Clients)
 		{
-			string msg = rcvMessage;
-			m_GroundWeb->PrintToCMD("Received Message: " + msg);
+			char rcvMessage[MAX_RCV_SIZE];
+			int size = ReceiveDataTCP(rcvMessage, clientSocket);
+			if (size > 0)
+			{
+				string msg = rcvMessage;
+				m_GroundWeb->PrintToCMD("Received Message: " + msg);
+			}
 		}
 	}
 }
@@ -406,20 +417,19 @@ void NetworkManager::StartServer()
 			AcceptConnectionsTCP();
 		});
 
-	while (true)
-	{
-		if (numConnections > 0)
+	m_ReceiveThread = thread([this]
 		{
-			m_GroundWeb->PrintToCMD("ReceiveMessage() Called");
-
-			m_ReceiveThread = thread([this]
+			while (true)
+			{
+				if (numConnections > 0)
 				{
-					ReceiveMessage();
-				});
+					m_GroundWeb->PrintToCMD("ReceiveMessage() Called");
+					break;
+				}
+			}
 
-			break;
-		}
-	}
+			ReceiveMessage();
+		});
 }
 
 void NetworkManager::StartClient()

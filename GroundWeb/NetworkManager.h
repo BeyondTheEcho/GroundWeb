@@ -40,7 +40,7 @@ public:
 	void SendDataUDP(const char* data);
 	//Receive Data
 	int ReceiveDataUDP(char* ReceiveBuffer);
-	int ReceiveDataTCP(char* message);
+	int ReceiveDataTCP(char* message, SOCKET sock);
 	//Receive Message
 	void ReceiveMessage();
 
