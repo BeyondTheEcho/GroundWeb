@@ -172,12 +172,12 @@ void NetworkManager::AcceptConnectionsTCP()
 	while (true)
 	{
 		SOCKET tempSocket = INVALID_SOCKET;
-		ioctlsocket(tempSocket, FIONBIO, &bit);
 
 		int clientSize = sizeof(TCPoutAddr);
 
 		TCPSocketOut = accept(TCPSocketIn, reinterpret_cast<SOCKADDR*>(&TCPoutAddr), &clientSize);
 		tempSocket = TCPSocketOut;
+		ioctlsocket(tempSocket, FIONBIO, &bit);
 
 		if (tempSocket != INVALID_SOCKET)
 		{
@@ -208,7 +208,7 @@ void NetworkManager::SendDataTCP(const char* data)
 	{
 		int error = WSAGetLastError();
 
-		if (error = WSAEWOULDBLOCK)
+		if (error == WSAEWOULDBLOCK)
 		{
 			string sData = data;
 
@@ -272,14 +272,10 @@ int NetworkManager::ReceiveDataTCP(char* message, SOCKET sock)
 		{
 			m_GroundWeb->PrintToCMD("WSA ERROR: " + to_string(error) + " - Error receiving from TCP");
 			//Shutdown();
-
-			return 0;
 		}
 	}
-	else if (bytesReceived != SOCKET_ERROR)
-	{
-		return bytesReceived;
-	}
+
+	return bytesReceived;
 }
 
 void NetworkManager::ReceiveMessage()
@@ -303,6 +299,8 @@ void NetworkManager::ReceiveMessage()
 			}
 		}
 	}
+
+	m_GroundWeb->PrintToCMD("Exited While Loop - ReceiveMessage()");
 }
 
 void NetworkManager::Shutdown()
@@ -413,8 +411,6 @@ void NetworkManager::RegisterNetworkCommands()
 //Network Commands
 void NetworkManager::StartNetworking()
 {
-	BindTCP();
-
 	if (m_IsServer == true)
 	{
 		StartServer();
@@ -437,6 +433,7 @@ void NetworkManager::StartServer()
 {
 	m_GroundWeb->PrintToCMD("Staring up as server...");
 
+	BindTCP();
 	ListenTCP();
 
 	m_ListenThread = thread([this]
