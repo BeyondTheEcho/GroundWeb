@@ -51,7 +51,7 @@ void GroundWeb::PrintToCMD(string s)
 {
 	QString cmdString = m_UI.label->text();
 
-	cmdString.append("\n");
+	cmdString.append("<br/>");
 	cmdString.append(QString::fromStdString(s));
 
 	m_UI.label->setText(cmdString);

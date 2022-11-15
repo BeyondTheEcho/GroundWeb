@@ -479,13 +479,19 @@ void NetworkManager::RegisterNetworkCommands()
 	string messageDesc = "Sends message content to connected IP";
 	m_GroundWeb->RegisterCommand("msg", messageDesc, [this](std::string messageContent)
 		{
-			SendMessageTCP(messageContent);
+			SendMessageTCP(FormatUserMessage(messageContent));
 		});
 
 	string userDesc = "Sets your username";
 	m_GroundWeb->RegisterCommand("setuser", userDesc, [this](std::string messageContent)
 		{
 			SetUsername(messageContent);
+		});
+
+	string setcolorDesc = "Sets your message color, choice of white/blue/red/yellow";
+	m_GroundWeb->RegisterCommand("setcolor", setcolorDesc, [this](std::string messageContent)
+		{
+			SetMessageColor(messageContent);
 		});
 
 	m_GroundWeb->PrintToCMD("Network commands registered");
@@ -648,11 +654,37 @@ void NetworkManager::SetUsername(string message)
 	
 }
 
+void NetworkManager::SetMessageColor(string message)
+{
+	if (message == "yellow") m_MessageColor = m_MessageColorYellow;
+	if (message == "white") m_MessageColor = m_MessageColorDefault;
+	if (message == "blue") m_MessageColor = m_MessageColorBlue;
+	if (message == "red") m_MessageColor = m_MessageColorRed;
+}
+
 string NetworkManager::FormatUserMessage(string message)
 {
-	string formattedMessage = m_Username;
+	string formattedMessage;
+	string str1 = "<p><span style=\"color:";
+	string userColor = m_UsernameColor;
+	string str2 = "\"><strong>";
+	string str3 = "</strong></span>";
+	string str4 = "<span style = \"color:";
+	string textColor = m_MessageColor;
+	string str5 = "\">";
+	string str6 = "</span></p>";
+
+	formattedMessage.append(str1);
+	formattedMessage.append(userColor);
+	formattedMessage.append(str2);
+	formattedMessage.append(m_Username);
+	formattedMessage.append(str3);
 	formattedMessage.append(": ");
+	formattedMessage.append(str4);
+	formattedMessage.append(textColor);
+	formattedMessage.append(str5);
 	formattedMessage.append(message);
+	formattedMessage.append(str6);
 
 	return formattedMessage;
 }
