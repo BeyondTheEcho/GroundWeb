@@ -39,12 +39,15 @@ public:
 	void AcceptConnectionsTCP();
 	//Send Data
 	void SendDataTCP(const char* data);
+	void SendDataTCPServer(const char* data);
 	void SendDataUDP(const char* data);
 	//Receive Data
 	int ReceiveDataUDP(char* ReceiveBuffer);
 	int ReceiveDataTCP(char* message, SOCKET sock);
 	//Receive Message
-	void ReceiveMessage();
+	void ReceiveMessageClient();
+	void ReceiveMessageServer();
+	void SpinReceiveMessageThread();
 
 	void SetRemoteData();
 	int GetNumConnections() { return numConnections; }
@@ -60,6 +63,8 @@ public:
 	void SetIP(string ip);
 	void SetPort(string port);
 	void SendMessageTCP(string message);
+	void SetUsername(string message);
+	string FormatUserMessage(string message);
 
 	//Call on Shutdown
 	void Shutdown();
@@ -89,8 +94,10 @@ private:
 	bool m_PortOverride = false;
 	bool m_ListenThreadIsRunning = false;
 	bool m_ReceiveThreadIsRunning = false;
+	bool m_UsernameSet = false;
 	string m_IP;
 	string m_Port = "8889";
+	string m_Username;
 	vector<SOCKET> m_Clients;
 
 	//Private Threads

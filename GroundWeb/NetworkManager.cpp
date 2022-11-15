@@ -222,6 +222,35 @@ void NetworkManager::SendDataTCP(const char* data)
 	}
 }
 
+void NetworkManager::SendDataTCPServer(const char* data)
+{
+	m_Mutex1.lock();
+	vector<SOCKET> tempSockets = m_Clients;
+	m_Mutex1.unlock();
+
+	for (auto socket : tempSockets)
+	{
+		int totalByteSize = send(socket, data, strlen(data) + 1, 0);
+
+		if (totalByteSize == SOCKET_ERROR)
+		{
+			int error = WSAGetLastError();
+
+			if (error == WSAEWOULDBLOCK)
+			{
+				string sData = data;
+
+				m_GroundWeb->PrintToCMD("TCP - Sent the data across: " + sData + " size was: " + to_string(totalByteSize));
+			}
+			else
+			{
+				m_GroundWeb->PrintToCMD("ERROR: Failed to send TCP message");
+				Shutdown(); //May need to be removed in the future
+			}
+		}
+	}
+}
+
 void NetworkManager::SetRemoteData()
 {
 	UDPoutAddr.sin_family = AF_INET;
@@ -278,9 +307,9 @@ int NetworkManager::ReceiveDataTCP(char* message, SOCKET sock)
 	return bytesReceived;
 }
 
-void NetworkManager::ReceiveMessage()
+void NetworkManager::ReceiveMessageClient()
 {
-	m_GroundWeb->PrintToCMD("ReceiveMessage() Called");
+	m_GroundWeb->PrintToCMD("ReceiveMessageClient() Called");
 
 	while (true)
 	{
@@ -299,8 +328,56 @@ void NetworkManager::ReceiveMessage()
 			}
 		}
 	}
+}
 
-	m_GroundWeb->PrintToCMD("Exited While Loop - ReceiveMessage()");
+void NetworkManager::ReceiveMessageServer()
+{
+	m_GroundWeb->PrintToCMD("ReceiveMessageServer() Called");
+
+	while (true)
+	{
+		m_Mutex1.lock();
+		vector<SOCKET> tempClients = m_Clients;
+		m_Mutex1.unlock();
+
+		for (auto clientSocket : tempClients)
+		{
+			char rcvMessage[MAX_RCV_SIZE];
+			int size = ReceiveDataTCP(rcvMessage, clientSocket);
+			if (size > 0)
+			{
+				string msg = rcvMessage;
+				m_GroundWeb->PrintToCMD("Received Message: " + msg);
+
+				SendDataTCPServer(msg.c_str());
+			}
+		}
+	}
+}
+
+void NetworkManager::SpinReceiveMessageThread()
+{
+	m_ReceiveThread = thread([this]
+	{
+		m_ReceiveThreadIsRunning = true;
+
+		while (true)
+		{
+			if (numConnections > 0)
+			{
+				break;
+			}
+		}
+
+		if (m_IsServer)
+		{
+			ReceiveMessageServer();
+		}
+		else
+		{
+			ReceiveMessageClient();
+		}
+	});
 }
 
 void NetworkManager::Shutdown()
@@ -405,6 +482,12 @@ void NetworkManager::RegisterNetworkCommands()
 			SendMessageTCP(messageContent);
 		});
 
+	string userDesc = "Sets your username";
+	m_GroundWeb->RegisterCommand("setuser", userDesc, [this](std::string messageContent)
+		{
+			SetUsername(messageContent);
+		});
+
 	m_GroundWeb->PrintToCMD("Network commands registered");
 }
 
@@ -443,20 +526,7 @@ void NetworkManager::StartServer()
 			AcceptConnectionsTCP();
 		});
 
-	m_ReceiveThread = thread([this]
-		{
-			m_ReceiveThreadIsRunning = true;
-
-			while (true)
-			{
-				if (numConnections > 0)
-				{
-					break;
-				}
-			}
-
-			ReceiveMessage();
-		});
+	SpinReceiveMessageThread();
 }
 
 void NetworkManager::StartClient()
@@ -464,6 +534,8 @@ void NetworkManager::StartClient()
 	m_GroundWeb->PrintToCMD("Staring up as client...");
 
 	ConnectTCP();
+
+	SpinReceiveMessageThread();
 }
 
 void NetworkManager::FlagForServer()
@@ -529,15 +601,58 @@ void NetworkManager::SetPort(string port)
 
 void NetworkManager::SendMessageTCP(string message)
 {
-	if (m_IsConnected == false)
+	if (!m_IsConnected)
 	{
 		m_GroundWeb->PrintToCMD("ERROR: Can't send message when you are not connected");
+		return;
+	}
+
+	if (!m_UsernameSet)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: Username is not set");
 		return;
 	}
 
 	if (message.length() > 0)
 	{
 		m_GroundWeb->PrintToCMD("Sent: " + message);
-		SendDataTCP(message.c_str());
+
+		if (m_IsServer)
+		{
+			SendDataTCPServer(message.c_str());
+		}
+		else
+		{
+			SendDataTCP(FormatUserMessage(message).c_str());
+		}
 	}
+	else
+	{
+		m_GroundWeb->PrintToCMD("ERROR: No message to send");
+	}
+}
+
+void NetworkManager::SetUsername(string message)
+{
+	if (message.length() <= 15)
+	{
+		m_Username = message;
+		m_UsernameSet = true;
+
+		m_GroundWeb->PrintToCMD("Username set to: " + m_Username);
+	}
+	else
+	{
+		m_GroundWeb->PrintToCMD("ERROR: Username cannot be longer than 15 characters");
+	}
+	
+}
+
+string NetworkManager::FormatUserMessage(string message)
+{
+	string formattedMessage = m_Username;
+	formattedMessage.append(": ");
+	formattedMessage.append(message);
+
+	return formattedMessage;
 }
