@@ -324,7 +324,7 @@ void NetworkManager::ReceiveMessageClient()
 			if (size > 0)
 			{
 				string msg = rcvMessage;
-				m_GroundWeb->PrintToCMD("Received Message: " + msg);
+				m_GroundWeb->PrintToCMD(msg);
 			}
 		}
 	}
@@ -347,7 +347,7 @@ void NetworkManager::ReceiveMessageServer()
 			if (size > 0)
 			{
 				string msg = rcvMessage;
-				m_GroundWeb->PrintToCMD("Received Message: " + msg);
+				m_GroundWeb->PrintToCMD(msg);
 
 				SendDataTCPServer(msg.c_str());
 			}
@@ -621,7 +621,7 @@ void NetworkManager::SendMessageTCP(string message)
 
 	if (message.length() > 0)
 	{
-		m_GroundWeb->PrintToCMD("Sent: " + message);
+		m_GroundWeb->PrintToCMD(message);
 
 		if (m_IsServer)
 		{
@@ -629,7 +629,7 @@ void NetworkManager::SendMessageTCP(string message)
 		}
 		else
 		{
-			SendDataTCP(FormatUserMessage(message).c_str());
+			SendDataTCP(message.c_str());
 		}
 	}
 	else
