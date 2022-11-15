@@ -162,6 +162,39 @@ void NetworkManager::ConnectTCP()
 	ioctlsocket(TCPSocketIn, FIONBIO, &bit);
 }
 
+void NetworkManager::ConnectTCP(string ip)
+{
+	//Client connection to the listening socket
+	TCPoutAddr.sin_family = AF_INET;
+	TCPoutAddr.sin_port = htons(stoi(m_Port));
+	//Change Ip to 127.0.0.1 To Connect To Self
+	inet_pton(AF_INET, ip.c_str(), &TCPoutAddr.sin_addr);
+
+	m_GroundWeb->PrintToCMD("Attempting connection to " + m_IP + " on " + m_Port);
+
+	int connectStatus = connect(TCPSocketOut, reinterpret_cast<sockaddr*>(&TCPoutAddr), sizeof(TCPoutAddr));
+
+	m_GroundWeb->PrintToCMD("Connection Status: " + to_string(connectStatus));
+
+	if (connectStatus == SOCKET_ERROR)
+	{
+		m_GroundWeb->PrintToCMD("ERROR: Error connecting through TCP socket info supplied");
+		m_IsConnected = false;
+		//Shutdown();
+	}
+
+	if (connectStatus != SOCKET_ERROR)
+	{
+		m_IsConnected = true;
+		m_GroundWeb->PrintToCMD("Successfully connected to " + m_IP);
+	}
+
+	//Makes socket Async
+	unsigned long bit = 1;
+	ioctlsocket(TCPSocketOut, FIONBIO, &bit);
+	ioctlsocket(TCPSocketIn, FIONBIO, &bit);
+}
+
 void NetworkManager::AcceptConnectionsTCP()
 {
 	m_GroundWeb->PrintToCMD("Now Accepting TCP Connections");
@@ -194,6 +227,8 @@ void NetworkManager::AcceptConnectionsTCP()
 			string ip = ipConnected;
 
 			m_GroundWeb->PrintToCMD("Accepted Connection From: " + ip);
+
+			ConnectTCP(ipConnected);
 		}
 
 		ioctlsocket(TCPSocketIn, FIONBIO, &bit);
@@ -538,6 +573,20 @@ void NetworkManager::StartServer()
 void NetworkManager::StartClient()
 {
 	m_GroundWeb->PrintToCMD("Staring up as client...");
+
+	//TEST STUFF
+
+	BindTCP();
+	ListenTCP();
+
+	m_ListenThread = thread([this]
+		{
+			m_ListenThreadIsRunning = true;
+
+			AcceptConnectionsTCP();
+		});
+
+	//TEST STUFF
 
 	ConnectTCP();
 

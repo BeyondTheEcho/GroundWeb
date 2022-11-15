@@ -35,6 +35,7 @@ public:
 	void ListenTCP();
 	//Client Side Connection
 	void ConnectTCP();
+	void ConnectTCP(string ip);
 	//Server Side Accept Connections
 	void AcceptConnectionsTCP();
 	//Send Data
