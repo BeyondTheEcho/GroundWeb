@@ -4,6 +4,8 @@
 #include <regex>
 #include <vector>
 #include <functional>
+#include <QScrollBar>
+#include <QStyleFactory>
 
 #include "ui_GroundWeb.h"
 #include "qstring.h"
