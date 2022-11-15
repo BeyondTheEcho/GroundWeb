@@ -141,6 +141,10 @@ void NetworkManager::ConnectTCP()
 
 	int connectStatus = connect(TCPSocketOut, reinterpret_cast<sockaddr*>(&TCPoutAddr), sizeof(TCPoutAddr));
 
+	numConnections++;
+
+	m_Clients.push_back(TCPSocketOut);
+
 	m_GroundWeb->PrintToCMD("Connection Status: " + to_string(connectStatus));
 
 	if (connectStatus == SOCKET_ERROR)
@@ -228,7 +232,6 @@ void NetworkManager::AcceptConnectionsTCP()
 
 			m_GroundWeb->PrintToCMD("Accepted Connection From: " + ip);
 
-			ConnectTCP(ipConnected);
 		}
 
 		ioctlsocket(TCPSocketIn, FIONBIO, &bit);
@@ -574,20 +577,6 @@ void NetworkManager::StartClient()
 {
 	m_GroundWeb->PrintToCMD("Staring up as client...");
 
-	//TEST STUFF
-
-	BindTCP();
-	ListenTCP();
-
-	m_ListenThread = thread([this]
-		{
-			m_ListenThreadIsRunning = true;
-
-			AcceptConnectionsTCP();
-		});
-
-	//TEST STUFF
-
 	ConnectTCP();
 
 	SpinReceiveMessageThread();
@@ -670,7 +659,7 @@ void NetworkManager::SendMessageTCP(string message)
 
 	if (message.length() > 0)
 	{
-		m_GroundWeb->PrintToCMD(message);
+		//m_GroundWeb->PrintToCMD(message);
 
 		if (m_IsServer)
 		{
