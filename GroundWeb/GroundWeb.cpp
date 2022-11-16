@@ -7,13 +7,20 @@ GroundWeb::GroundWeb(QWidget *parent) : QWidget(parent)
 
     qApp->setStyle(QStyleFactory::create("Fusion"));
     QPalette p = qApp->palette();
-    p.setColor(QPalette::Window, QColor(1, 4, 9));
-    p.setColor(QPalette::Button, QColor(53, 53, 53));
-    p.setColor(QPalette::Highlight, QColor(65, 138, 201));
-    p.setColor(QPalette::ButtonText, QColor(255, 255, 255));
-    p.setColor(QPalette::WindowText, QColor(255, 255, 255));
-    p.setColor(QPalette::Base, QColor(13, 17, 23));
-    p.setColor(QPalette::Text, QColor(201, 209, 217));
+    p.setColor(QPalette::Active, QPalette::Window, QColor(1, 4, 9));
+    p.setColor(QPalette::Active, QPalette::Button, QColor(53, 53, 53));
+    p.setColor(QPalette::Active, QPalette::Highlight, QColor(65, 138, 201));
+    p.setColor(QPalette::Active, QPalette::ButtonText, QColor(255, 255, 255));
+    p.setColor(QPalette::Active, QPalette::WindowText, QColor(255, 255, 255));
+    p.setColor(QPalette::Active, QPalette::Base, QColor(13, 17, 23));
+    p.setColor(QPalette::Active, QPalette::Text, QColor(201, 209, 217));
+    p.setColor(QPalette::Inactive, QPalette::Window, QColor(1, 4, 9));
+    p.setColor(QPalette::Inactive, QPalette::Button, QColor(53, 53, 53));
+    p.setColor(QPalette::Inactive, QPalette::Highlight, QColor(65, 138, 201));
+    p.setColor(QPalette::Inactive, QPalette::ButtonText, QColor(255, 255, 255));
+    p.setColor(QPalette::Inactive, QPalette::WindowText, QColor(255, 255, 255));
+    p.setColor(QPalette::Inactive, QPalette::Base, QColor(13, 17, 23));
+    p.setColor(QPalette::Inactive, QPalette::Text, QColor(201, 209, 217));
     qApp->setPalette(p);
 
     p.setColor(QPalette::Window, QColor(13, 17, 23));

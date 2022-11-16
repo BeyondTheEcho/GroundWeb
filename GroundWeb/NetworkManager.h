@@ -67,6 +67,7 @@ public:
 	void SetUsername(string message);
 	void SetMessageColor(string message);
 	string FormatUserMessage(string message);
+	string FormatServerMessage(string message);
 
 	//Call on Shutdown
 	void Shutdown();
@@ -100,14 +101,20 @@ private:
 	string m_IP;
 	string m_Port = "8889";
 	string m_Username;
+	string m_Servername = "SERVER";
 	vector<SOCKET> m_Clients;
 
+	//User Hex Colors
 	string m_UsernameColor = "#2bff56";
 	string m_MessageColor = "#ffffff";
 	string m_MessageColorDefault = "#ffffff";
 	string m_MessageColorBlue = "#3633ff";
 	string m_MessageColorRed = "#ff0000";
 	string m_MessageColorYellow = "#ffdd00";
+
+	//Server Hex Colors
+	string m_ServerUsernameColor = "#1f9eff";
+	string m_ServerMessageColor = "#6b3ede";
 
 	//Private Threads
 	thread m_ListenThread;

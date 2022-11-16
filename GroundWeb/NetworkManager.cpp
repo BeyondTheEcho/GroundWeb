@@ -283,7 +283,6 @@ void NetworkManager::SendDataTCPServer(const char* data)
 			else
 			{
 				m_GroundWeb->PrintToCMD("ERROR: Failed to send TCP message");
-				Shutdown(); //May need to be removed in the future
 			}
 		}
 	}
@@ -517,7 +516,7 @@ void NetworkManager::RegisterNetworkCommands()
 	string messageDesc = "Sends message content to connected IP";
 	m_GroundWeb->RegisterCommand("msg", messageDesc, [this](std::string messageContent)
 		{
-			SendMessageTCP(FormatUserMessage(messageContent));
+			SendMessageTCP(messageContent);
 		});
 
 	string userDesc = "Sets your username";
@@ -645,29 +644,31 @@ void NetworkManager::SetPort(string port)
 
 void NetworkManager::SendMessageTCP(string message)
 {
-	if (!m_IsConnected)
+	if (!m_IsServer)
 	{
-		m_GroundWeb->PrintToCMD("ERROR: Can't send message when you are not connected");
-		return;
-	}
+		if (!m_IsConnected)
+		{
+			m_GroundWeb->PrintToCMD("ERROR: Can't send message when you are not connected");
+			return;
+		}
 
-	if (!m_UsernameSet)
-	{
-		m_GroundWeb->PrintToCMD("ERROR: Username is not set");
-		return;
+		if (!m_UsernameSet)
+		{
+			m_GroundWeb->PrintToCMD("ERROR: Username is not set");
+			return;
+		}
 	}
 
 	if (message.length() > 0)
 	{
-		//m_GroundWeb->PrintToCMD(message);
-
 		if (m_IsServer)
 		{
-			SendDataTCPServer(message.c_str());
+			m_GroundWeb->PrintToCMD(FormatServerMessage(message));
+			SendDataTCPServer(FormatServerMessage(message).c_str());
 		}
 		else
 		{
-			SendDataTCP(message.c_str());
+			SendDataTCP(FormatUserMessage(message).c_str());
 		}
 	}
 	else
@@ -716,6 +717,33 @@ string NetworkManager::FormatUserMessage(string message)
 	formattedMessage.append(userColor);
 	formattedMessage.append(str2);
 	formattedMessage.append(m_Username);
+	formattedMessage.append(str3);
+	formattedMessage.append(": ");
+	formattedMessage.append(str4);
+	formattedMessage.append(textColor);
+	formattedMessage.append(str5);
+	formattedMessage.append(message);
+	formattedMessage.append(str6);
+
+	return formattedMessage;
+}
+
+string NetworkManager::FormatServerMessage(string message)
+{
+	string formattedMessage;
+	string str1 = "<p><span style=\"color:";
+	string userColor = m_ServerUsernameColor;
+	string str2 = "\"><strong>";
+	string str3 = "</strong></span>";
+	string str4 = "<span style = \"color:";
+	string textColor = m_ServerMessageColor;
+	string str5 = "\">";
+	string str6 = "</span></p>";
+
+	formattedMessage.append(str1);
+	formattedMessage.append(userColor);
+	formattedMessage.append(str2);
+	formattedMessage.append(m_Servername);
 	formattedMessage.append(str3);
 	formattedMessage.append(": ");
 	formattedMessage.append(str4);
