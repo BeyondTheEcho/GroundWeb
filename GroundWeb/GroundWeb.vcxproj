@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{A2DB3A65-F8CE-4227-9763-D9573C4BE0BB}</ProjectGuid>
+    <ProjectGuid>{A0233A70-514B-47B7-9483-D3E93FF35DCC}</ProjectGuid>
     <Keyword>QtVS_v304</Keyword>
     <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">10.0.19041.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformVersion Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">10.0.19041.0</WindowsTargetPlatformVersion>
@@ -31,12 +31,12 @@
     <Import Project="$(QtMsBuild)\qt_defaults.props" />
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
-    <QtInstall>6.4.0_msvc2019_64</QtInstall>
+    <QtInstall>6.4.1_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
-    <QtInstall>6.4.0_msvc2019_64</QtInstall>
+    <QtInstall>6.4.1_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
     <QtBuildConfig>release</QtBuildConfig>
   </PropertyGroup>
@@ -87,15 +87,15 @@
   <ItemGroup>
     <ClCompile Include="NetworkManager.cpp" />
     <QtRcc Include="GroundWeb.qrc" />
-    <QtUic Include="GroundWeb.ui" />
     <QtMoc Include="GroundWeb.h" />
     <ClCompile Include="GroundWeb.cpp" />
     <ClCompile Include="main.cpp" />
-    <None Include="GroundWeb.ico" />
-    <ResourceCompile Include="GroundWeb.rc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NetworkManager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="GroundWeb.ui" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

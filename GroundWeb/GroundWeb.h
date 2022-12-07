@@ -38,9 +38,9 @@ public slots:
     void on_userInputField_returnPressed();
 
 public:
-    GroundWeb(QWidget *parent = nullptr);
+    GroundWeb(QWidget* parent = nullptr);
     ~GroundWeb();
-	void PrintToCMD(string s);
+    void PrintToCMD(string s);
     void RegisterCommand(string name, string description, Command::CommandHandler handler);
 
 private:

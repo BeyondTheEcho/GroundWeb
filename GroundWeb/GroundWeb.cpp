@@ -1,8 +1,8 @@
 #include "GroundWeb.h"
 
-GroundWeb::GroundWeb(QWidget *parent) : QWidget(parent)
+GroundWeb::GroundWeb(QWidget* parent) : QWidget(parent)
 {
-	//Execute code on setup here
+    //Execute code on setup here
     m_UI.setupUi(this);
 
     qApp->setStyle(QStyleFactory::create("Fusion"));
@@ -56,12 +56,12 @@ void GroundWeb::on_userInputField_returnPressed()
 
 void GroundWeb::PrintToCMD(string s)
 {
-	QString cmdString = m_UI.label->text();
+    QString cmdString = m_UI.label->text();
 
-	cmdString.append("<br/>");
-	cmdString.append(QString::fromStdString(s));
+    cmdString.append("<br/>");
+    cmdString.append(QString::fromStdString(s));
 
-	m_UI.label->setText(cmdString);
+    m_UI.label->setText(cmdString);
 }
 
 void GroundWeb::RegisterCommand(string name, string description, Command::CommandHandler handler)
@@ -75,7 +75,7 @@ void GroundWeb::HandleCommands(string cmdString)
     {
         return;
     }
-    
+
     cmdString = cmdString.substr(1);
 
     for (auto command : m_Commands)

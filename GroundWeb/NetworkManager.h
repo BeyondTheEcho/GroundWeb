@@ -121,6 +121,6 @@ private:
 	thread m_ReceiveThread;
 	//Mutex
 	mutex m_Mutex1;
-	
+
 };
 

@@ -58,7 +58,7 @@ void NetworkManager::CreateTCPSockets()
 void NetworkManager::CreateUDPSockets()
 {
 	UDPSocketIn = socket(AF_INET, SOCK_DGRAM, 0);
-	
+
 	if (UDPSocketIn == INVALID_SOCKET)
 	{
 		m_GroundWeb->PrintToCMD("ERROR: Failed to create UDPSocketIn");
@@ -299,7 +299,7 @@ void NetworkManager::SetRemoteData()
 
 void NetworkManager::SendDataUDP(const char* data)
 {
-	int totalBytes = sendto(UDPSocketOut, data, strlen(data) + 1, 0, 
+	int totalBytes = sendto(UDPSocketOut, data, strlen(data) + 1, 0,
 		reinterpret_cast<SOCKADDR*>(&UDPoutAddr), sizeof(UDPoutAddr));
 
 	if (totalBytes == SOCKET_ERROR)
@@ -395,26 +395,26 @@ void NetworkManager::ReceiveMessageServer()
 void NetworkManager::SpinReceiveMessageThread()
 {
 	m_ReceiveThread = thread([this]
-	{
-		m_ReceiveThreadIsRunning = true;
-
-		while (true)
 		{
-			if (numConnections > 0)
+			m_ReceiveThreadIsRunning = true;
+
+			while (true)
 			{
-				break;
+				if (numConnections > 0)
+				{
+					break;
+				}
 			}
-		}
 
-		if (m_IsServer)
-		{
-			ReceiveMessageServer();
-		}
-		else
-		{
-			ReceiveMessageClient();
-		}
-	});
+			if (m_IsServer)
+			{
+				ReceiveMessageServer();
+			}
+			else
+			{
+				ReceiveMessageClient();
+			}
+		});
 }
 
 void NetworkManager::Shutdown()
@@ -690,7 +690,7 @@ void NetworkManager::SetUsername(string message)
 	{
 		m_GroundWeb->PrintToCMD("ERROR: Username cannot be longer than 15 characters");
 	}
-	
+
 }
 
 void NetworkManager::SetMessageColor(string message)
