@@ -8,7 +8,7 @@ int main(int argc, char* argv[])
     QApplication a(argc, argv);
     GroundWeb w;
     NetworkManager net(&w);
-    HangManModule Hangman(&net);
+    HangManModule Hangman(&w);
     w.show();
 
     return a.exec();
