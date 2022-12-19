@@ -240,7 +240,14 @@ void NetworkManager::AcceptConnectionsTCP()
 
 void NetworkManager::SendDataTCP(const char* data)
 {
-	int totalByteSize = send(TCPSocketOut, data, strlen(data) + 1, 0);
+	NetworkData* nData = new NetworkData;
+
+	strncpy(nData->m_Message, data, sizeof(nData->m_Message));
+
+	char* sendData = reinterpret_cast<char*>(nData);
+
+	int totalByteSize = send(TCPSocketOut, sendData, strlen(sendData) + 1, 0);
+
 
 	if (totalByteSize == SOCKET_ERROR)
 	{
@@ -258,6 +265,8 @@ void NetworkManager::SendDataTCP(const char* data)
 			Shutdown(); //May need to be removed in the future
 		}
 	}
+
+	delete nData;
 }
 
 void NetworkManager::SendDataTCPServer(const char* data)
@@ -268,7 +277,13 @@ void NetworkManager::SendDataTCPServer(const char* data)
 
 	for (auto socket : tempSockets)
 	{
-		int totalByteSize = send(socket, data, strlen(data) + 1, 0);
+		NetworkData* nData = new NetworkData;
+
+		strncpy(nData->m_Message, data, sizeof(nData->m_Message));
+
+		char* sendData = reinterpret_cast<char*>(nData);
+
+		int totalByteSize = send(socket, sendData, strlen(sendData) + 1, 0);
 
 		if (totalByteSize == SOCKET_ERROR)
 		{
@@ -285,6 +300,8 @@ void NetworkManager::SendDataTCPServer(const char* data)
 				m_GroundWeb->PrintToCMD("ERROR: Failed to send TCP message");
 			}
 		}
+
+		delete nData;
 	}
 }
 
@@ -348,6 +365,8 @@ void NetworkManager::ReceiveMessageClient()
 {
 	m_GroundWeb->PrintToCMD("ReceiveMessageClient() Called");
 
+	char rcvMessage[MAX_RCV_SIZE];
+
 	while (true)
 	{
 		m_Mutex1.lock();
@@ -356,11 +375,19 @@ void NetworkManager::ReceiveMessageClient()
 
 		for (auto clientSocket : tempClients)
 		{
-			char rcvMessage[MAX_RCV_SIZE];
 			int size = ReceiveDataTCP(rcvMessage, clientSocket);
+
+			string msg;
+
 			if (size > 0)
 			{
-				string msg = rcvMessage;
+				NetworkData* mData = reinterpret_cast<NetworkData*>(rcvMessage);
+
+				msg = mData->m_Message;
+			}
+
+			if (msg.length() > 0)
+			{
 				m_GroundWeb->PrintToCMD(msg);
 			}
 		}
@@ -371,6 +398,8 @@ void NetworkManager::ReceiveMessageServer()
 {
 	m_GroundWeb->PrintToCMD("ReceiveMessageServer() Called");
 
+	char rcvMessage[MAX_RCV_SIZE];
+
 	while (true)
 	{
 		m_Mutex1.lock();
@@ -379,11 +408,19 @@ void NetworkManager::ReceiveMessageServer()
 
 		for (auto clientSocket : tempClients)
 		{
-			char rcvMessage[MAX_RCV_SIZE];
 			int size = ReceiveDataTCP(rcvMessage, clientSocket);
+
+			string msg;
+
 			if (size > 0)
 			{
-				string msg = rcvMessage;
+				NetworkData* mData = reinterpret_cast<NetworkData*>(rcvMessage);
+
+				msg = mData->m_Message;
+			}
+
+			if (msg.length() > 0)
+			{
 				m_GroundWeb->PrintToCMD(msg);
 
 				SendDataTCPServer(msg.c_str());
@@ -531,6 +568,18 @@ void NetworkManager::RegisterNetworkCommands()
 			SetMessageColor(messageContent);
 		});
 
+	string setaolorDesc = "Sets your message color, choice of white/blue/red/yellow";
+	m_GroundWeb->RegisterCommand("msgtest", setaolorDesc, [this](std::string messageContent)
+		{
+			SendMessageTest(messageContent.c_str());
+		});
+
+	string setbolorDesc = "Sets your message color, choice of white/blue/red/yellow";
+	m_GroundWeb->RegisterCommand("initclient", setbolorDesc, [this](std::string messageContent)
+		{
+			InitClient();
+		});
+
 	m_GroundWeb->PrintToCMD("Network commands registered");
 }
 
@@ -675,6 +724,32 @@ void NetworkManager::SendMessageTCP(string message)
 	{
 		m_GroundWeb->PrintToCMD("ERROR: No message to send");
 	}
+}
+
+void NetworkManager::SendMessageTest(const char* data)
+{
+	NetworkData* nData = new NetworkData;
+
+	strncpy(nData->m_Message, data, sizeof(nData->m_Message));
+
+	char* sendData = reinterpret_cast<char*>(nData);
+
+	NetworkData* mData = new NetworkData;
+
+	mData = reinterpret_cast<NetworkData*>(sendData);
+
+	string msg = mData->m_Message;
+
+	m_GroundWeb->PrintToCMD(msg);
+}
+
+void NetworkManager::InitClient()
+{
+	m_IsServer = false;
+	m_Username = "Client";
+	m_UsernameSet = true;
+	m_IP = "127.0.0.1";
+	m_IsIPSet = true;
 }
 
 void NetworkManager::SetUsername(string message)

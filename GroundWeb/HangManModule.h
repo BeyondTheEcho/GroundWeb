@@ -1,12 +1,13 @@
 #pragma once
-#include "GroundWeb.h"
+#include "NetworkManager.h"
 
 class HangManModule
 {
 public:
-	GroundWeb *m_GroundWeb;
+	GroundWeb* m_GroundWeb;
+	NetworkManager* m_NetworkManager;
 
-	HangManModule(GroundWeb *g);
+	HangManModule(GroundWeb* g, NetworkManager* n);
 	~HangManModule();
 
 	void RegisterCommands();

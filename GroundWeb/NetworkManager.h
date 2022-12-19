@@ -66,11 +66,21 @@ public:
 	void SendMessageTCP(string message);
 	void SetUsername(string message);
 	void SetMessageColor(string message);
+	void SendMessageTest(const char* data);
+	void InitClient();
 	string FormatUserMessage(string message);
 	string FormatServerMessage(string message);
 
 	//Call on Shutdown
 	void Shutdown();
+
+	//Struct
+	struct NetworkData
+	{
+		char m_Message[1000];
+		char m_ChosenWord[300];
+		char m_BlankedWord[300];
+	};
 
 private:
 	//Private Functions
@@ -119,8 +129,8 @@ private:
 	//Private Threads
 	thread m_ListenThread;
 	thread m_ReceiveThread;
+
 	//Mutex
 	mutex m_Mutex1;
-
 };
 
