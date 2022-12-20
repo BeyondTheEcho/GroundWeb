@@ -1,4 +1,5 @@
 #include "NetworkManager.h"
+#include "GroundWeb.h"
 
 NetworkManager::NetworkManager(GroundWeb* web)
 {
@@ -13,6 +14,7 @@ NetworkManager::NetworkManager(GroundWeb* web)
 	TCPoutAddr = { 0 };
 
 	m_GroundWeb = web;
+	NetworkManager* n = this;
 
 	RegisterNetworkCommands();
 	Init();
@@ -327,6 +329,57 @@ void NetworkManager::SendDataUDP(const char* data)
 	m_GroundWeb->PrintToCMD("UDP - Sent: " + to_string(totalBytes) + " of data ");
 }
 
+void NetworkManager::SendHangManDataTCP(NetworkData* net)
+{
+	char* sendData = reinterpret_cast<char*>(net);
+
+	int totalByteSize = send(TCPSocketOut, sendData, strlen(sendData) + 1, 0);
+
+
+	if (totalByteSize == SOCKET_ERROR)
+	{
+		int error = WSAGetLastError();
+
+		if (error == WSAEWOULDBLOCK)
+		{
+			//Stuff
+		}
+		else
+		{
+			m_GroundWeb->PrintToCMD("ERROR: Failed to send TCP message");
+			Shutdown(); //May need to be removed in the future
+		}
+	}
+}
+
+void NetworkManager::SendHangManDataTCPServer(NetworkData* net)
+{
+	m_Mutex1.lock();
+	vector<SOCKET> tempSockets = m_Clients;
+	m_Mutex1.unlock();
+
+	for (auto socket : tempSockets)
+	{
+		char* sendData = reinterpret_cast<char*>(net);
+
+		int totalByteSize = send(socket, sendData, strlen(sendData) + 1, 0);
+
+		if (totalByteSize == SOCKET_ERROR)
+		{
+			int error = WSAGetLastError();
+
+			if (error == WSAEWOULDBLOCK)
+			{
+				//I am tired god help me send help plz
+			}
+			else
+			{
+				m_GroundWeb->PrintToCMD("ERROR: Failed to send TCP message");
+			}
+		}
+	}
+}
+
 int NetworkManager::ReceiveDataUDP(char* ReceiveBuffer)
 {
 	int BytesReceived = 0;
@@ -375,20 +428,23 @@ void NetworkManager::ReceiveMessageClient()
 
 		for (auto clientSocket : tempClients)
 		{
-			int size = ReceiveDataTCP(rcvMessage, clientSocket);
-
 			string msg;
+			int size = ReceiveDataTCP(rcvMessage, clientSocket);
 
 			if (size > 0)
 			{
 				NetworkData* mData = reinterpret_cast<NetworkData*>(rcvMessage);
 
-				msg = mData->m_Message;
-			}
+				 msg = mData->m_Message;
 
-			if (msg.length() > 0)
-			{
-				m_GroundWeb->PrintToCMD(msg);
+				if (msg == "hangman")
+				{
+					//Do hangman stuff
+				}
+				else if (msg.length() > 0)
+				{
+					m_GroundWeb->PrintToCMD(msg);
+				}
 			}
 		}
 	}
@@ -417,14 +473,19 @@ void NetworkManager::ReceiveMessageServer()
 				NetworkData* mData = reinterpret_cast<NetworkData*>(rcvMessage);
 
 				msg = mData->m_Message;
-			}
 
-			if (msg.length() > 0)
-			{
-				m_GroundWeb->PrintToCMD(msg);
+				if (msg == "hangman")
+				{
+					//Do Hangman Stuff
+				}
+				else if (msg.length() > 0)
+				{
+					m_GroundWeb->PrintToCMD(msg);
 
-				SendDataTCPServer(msg.c_str());
+					SendDataTCPServer(msg.c_str());
+				}
 			}
+			
 		}
 	}
 }
@@ -452,6 +513,16 @@ void NetworkManager::SpinReceiveMessageThread()
 				ReceiveMessageClient();
 			}
 		});
+}
+
+void NetworkManager::RelayToCMD(string s)
+{
+	m_GroundWeb->PrintToCMD(s);
+}
+
+void NetworkManager::PopulateHangManInstance(HangManModule* h)
+{
+	m_HangMan = h;
 }
 
 void NetworkManager::Shutdown()

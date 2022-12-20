@@ -7,10 +7,10 @@
 #include  <WS2tcpip.h>
 #include <thread>
 #include <mutex>
-
-
 #include "iostream"
 #include "GroundWeb.h"
+
+class HangManModule;
 
 using std::to_string;
 using std::thread;
@@ -23,8 +23,16 @@ public:
 	NetworkManager(GroundWeb* web);
 	~NetworkManager();
 
-	static const int MAX_RCV_SIZE = 65535;
+	//Struct
+	struct NetworkData
+	{
+		char m_Message[1000];
+		char m_ChosenWord[30];
+		char m_BlankedWord[30];
+	};
 
+	static constexpr int MAX_RCV_SIZE = 65535;
+	
 	//Socket Creation
 	void CreateUDPSockets();
 	void CreateTCPSockets();
@@ -42,6 +50,9 @@ public:
 	void SendDataTCP(const char* data);
 	void SendDataTCPServer(const char* data);
 	void SendDataUDP(const char* data);
+	//Send Hangman Data
+	void SendHangManDataTCP(NetworkData* net);
+	void SendHangManDataTCPServer(NetworkData* net);
 	//Receive Data
 	int ReceiveDataUDP(char* ReceiveBuffer);
 	int ReceiveDataTCP(char* message, SOCKET sock);
@@ -49,6 +60,9 @@ public:
 	void ReceiveMessageClient();
 	void ReceiveMessageServer();
 	void SpinReceiveMessageThread();
+
+	void RelayToCMD(string s);
+	void PopulateHangManInstance(HangManModule* h);
 
 	void SetRemoteData();
 	int GetNumConnections() { return numConnections; }
@@ -68,19 +82,15 @@ public:
 	void SetMessageColor(string message);
 	void SendMessageTest(const char* data);
 	void InitClient();
+
+	//Public Vars
+	bool m_IsServer = false;
+	bool m_IsConnected = false;
 	string FormatUserMessage(string message);
 	string FormatServerMessage(string message);
 
 	//Call on Shutdown
 	void Shutdown();
-
-	//Struct
-	struct NetworkData
-	{
-		char m_Message[1000];
-		char m_ChosenWord[300];
-		char m_BlankedWord[300];
-	};
 
 private:
 	//Private Functions
@@ -88,6 +98,7 @@ private:
 
 	//Private Types
 	GroundWeb* m_GroundWeb;
+	HangManModule* m_HangMan;
 
 	SOCKET UDPSocketIn;
 	SOCKET UDPSocketOut;
@@ -101,9 +112,7 @@ private:
 
 	//Private Variables
 	int numConnections = 0;
-	bool m_IsServer = false;
 	bool m_IsIPSet = false;
-	bool m_IsConnected = false;
 	bool m_PortOverride = false;
 	bool m_ListenThreadIsRunning = false;
 	bool m_ReceiveThreadIsRunning = false;
@@ -133,4 +142,3 @@ private:
 	//Mutex
 	mutex m_Mutex1;
 };
-
