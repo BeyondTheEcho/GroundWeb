@@ -1,5 +1,6 @@
 #include "NetworkManager.h"
 #include "GroundWeb.h"
+#include "HangManModule.h"
 
 NetworkManager::NetworkManager(GroundWeb* web)
 {
@@ -439,7 +440,7 @@ void NetworkManager::ReceiveMessageClient()
 
 				if (msg == "hangman")
 				{
-					//Do hangman stuff
+					m_HangMan->ReceiveGameState(*mData);
 				}
 				else if (msg.length() > 0)
 				{
@@ -476,7 +477,7 @@ void NetworkManager::ReceiveMessageServer()
 
 				if (msg == "hangman")
 				{
-					//Do Hangman Stuff
+					m_HangMan->ReceiveGameState(*mData);
 				}
 				else if (msg.length() > 0)
 				{
